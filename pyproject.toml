@@ -23,13 +23,9 @@ dev = ["pytest", "cibuildwheel"]
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "pp* *-musllinux_i686"
-
-# build_all.sh builds thorvg once for every slice (runs once per CI runner)
-before-all = "cd {project}/.. && bash build_all.sh"
 environment = { THORVG_ROOT = ".." }
 
 [tool.cibuildwheel.linux]
-# Linux isn't covered by build_all.sh (Apple-only), so build inline
 before-all = """
     cd {project}/.. && \
     pip install meson ninja && \
@@ -40,7 +36,8 @@ before-all = """
 environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../builddir_linux/src" }
 
 [tool.cibuildwheel.macos]
-# build_all.sh produces output/macos_fat/libthorvg.a
+# build_all.sh builds all Apple slices once, produces output/macos_fat/
+before-all = "cd {project}/.. && bash build_all.sh"
 environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../output/macos_fat", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 [tool.cibuildwheel.windows]
@@ -54,5 +51,6 @@ before-all = """
 environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "..\\builddir_win\\src" }
 
 [tool.cibuildwheel.ios]
-# build_all.sh produces output/ios_arm64/libthorvg.a
+# build_all.sh builds all Apple slices once, produces output/ios_arm64/
+before-all = "cd {project}/.. && bash build_all.sh"
 environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../output/ios_arm64" }
