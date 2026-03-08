@@ -23,6 +23,7 @@ dev = ["pytest", "cibuildwheel"]
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "pp* *-musllinux_i686"
+enable = ["cpython-ios"]
 
 # Pre-build: build thorvg from source (or expect it pre-built)
 # Set THORVG_ROOT so setup.py finds headers + libs.
@@ -56,3 +57,15 @@ before-build = """
     ninja -C builddir_win
 """
 environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "..\\builddir_win\\src" }
+
+[tool.cibuildwheel.ios]
+before-build = """
+    cd {project}/../ && \
+    pip install meson ninja && \
+    meson setup builddir_ios --buildtype=release --default-library=static \
+        -Dbindings=capi -Dloaders=svg,lottie,ttf \
+        --cross-file cross/ios_arm64.txt && \
+    ninja -C builddir_ios && \
+    export THORVG_LIB_DIR=$(pwd)/builddir_ios/src
+"""
+environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../builddir_ios/src", SDKROOT = "$(xcrun --sdk iphoneos --show-sdk-path)" }
