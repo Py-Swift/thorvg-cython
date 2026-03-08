@@ -25,47 +25,35 @@ build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "pp* *-musllinux_i686"
 enable = ["cpython-ios"]
 
-# Pre-build: build thorvg from source (or expect it pre-built)
-# Set THORVG_ROOT so setup.py finds headers + libs.
+# build_all.sh builds thorvg once for every slice (runs once per CI runner)
+before-all = "cd {project}/.. && bash build_all.sh"
 environment = { THORVG_ROOT = ".." }
 
 [tool.cibuildwheel.linux]
-before-build = """
-    cd {project}/../ && \
+# Linux isn't covered by build_all.sh (Apple-only), so build inline
+before-all = """
+    cd {project}/.. && \
     pip install meson ninja && \
-    meson setup builddir_linux --buildtype=release --default-library=static -Dbindings=capi -Dloaders=svg,lottie,ttf && \
-    ninja -C builddir_linux && \
-    export THORVG_LIB_DIR=$(pwd)/builddir_linux/src
+    meson setup builddir_linux --buildtype=release --default-library=static \
+        -Dbindings=capi -Dloaders=svg,lottie,ttf && \
+    ninja -C builddir_linux
 """
 environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../builddir_linux/src" }
 
 [tool.cibuildwheel.macos]
-before-build = """
-    cd {project}/../ && \
-    pip install meson ninja && \
-    meson setup builddir_macos --buildtype=release --default-library=static -Dbindings=capi -Dloaders=svg,lottie,ttf && \
-    ninja -C builddir_macos && \
-    export THORVG_LIB_DIR=$(pwd)/builddir_macos/src
-"""
-environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../builddir_macos/src", MACOSX_DEPLOYMENT_TARGET = "11.0", SDKROOT = "$(xcrun --show-sdk-path)" }
+# build_all.sh produces output/macos_fat/libthorvg.a
+environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../output/macos_fat", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 [tool.cibuildwheel.windows]
-before-build = """
+before-all = """
     cd /d {project}\\.. && \
     pip install meson ninja && \
-    meson setup builddir_win --buildtype=release --default-library=static -Dbindings=capi -Dloaders=svg,lottie,ttf && \
+    meson setup builddir_win --buildtype=release --default-library=static \
+        -Dbindings=capi -Dloaders=svg,lottie,ttf && \
     ninja -C builddir_win
 """
 environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "..\\builddir_win\\src" }
 
 [tool.cibuildwheel.ios]
-before-build = """
-    cd {project}/../ && \
-    pip install meson ninja && \
-    meson setup builddir_ios --buildtype=release --default-library=static \
-        -Dbindings=capi -Dloaders=svg,lottie,ttf \
-        --cross-file cross/ios_arm64.txt && \
-    ninja -C builddir_ios && \
-    export THORVG_LIB_DIR=$(pwd)/builddir_ios/src
-"""
-environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../builddir_ios/src", SDKROOT = "$(xcrun --sdk iphoneos --show-sdk-path)" }
+# build_all.sh produces output/ios_arm64/libthorvg.a
+environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../output/ios_arm64" }
