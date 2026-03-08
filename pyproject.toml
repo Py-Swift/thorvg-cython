@@ -23,7 +23,6 @@ dev = ["pytest", "cibuildwheel"]
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "pp* *-musllinux_i686"
-enable = ["cpython-ios"]
 
 # build_all.sh builds thorvg once for every slice (runs once per CI runner)
 before-all = "cd {project}/.. && bash build_all.sh"
