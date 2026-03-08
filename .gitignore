@@ -33,6 +33,7 @@ Thumbs.db
 # Build artifacts
 builddir*/
 output/
+src/.framework/
 
 # thorvg source (symlink for local dev, cloned in CI)
 thorvg

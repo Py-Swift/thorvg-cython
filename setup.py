@@ -10,6 +10,7 @@ Platform-aware linking:
 Designed to work with cibuildwheel for automated wheel builds.
 """
 import os
+import shutil
 import sys
 import subprocess
 import sysconfig
@@ -294,6 +295,42 @@ extensions = cythonize(
 )
 
 # ---------------------------------------------------------------------------
+#  iOS: stage thorvg.xcframework into src/.framework/ for wheel bundling
+#
+#  After pip install the layout is:
+#    site-packages/.framework/thorvg.xcframework/...
+#    site-packages/thorvg_cython/...
+#
+#  PSProject / Kivy convention: any .framework directory at site-packages
+#  level is picked up by the host project at post-install.
+# ---------------------------------------------------------------------------
+_packages = find_packages(where="src")
+_package_dir = {"": "src"}
+_package_data = {}
+
+if _is_ios_build():
+    _fw_staging = HERE / "src" / ".framework"
+    _fw_staging.mkdir(exist_ok=True)
+    (_fw_staging / "__init__.py").touch()
+
+    _xcfw_src = Path(THORVG_XCFRAMEWORK)
+    _xcfw_dest = _fw_staging / "thorvg.xcframework"
+
+    if _xcfw_src.exists() and not _xcfw_dest.exists():
+        shutil.copytree(_xcfw_src, _xcfw_dest)
+
+    if _xcfw_dest.exists():
+        _packages.append(".framework")
+        # Collect every file in the xcframework tree for package_data
+        _fw_files = []
+        for _root, _dirs, _files in os.walk(str(_xcfw_dest)):
+            for _f in _files:
+                _fw_files.append(
+                    os.path.relpath(os.path.join(_root, _f), str(_fw_staging))
+                )
+        _package_data[".framework"] = _fw_files
+
+# ---------------------------------------------------------------------------
 #  Setup
 # ---------------------------------------------------------------------------
 setup(
@@ -306,8 +343,9 @@ setup(
     author="ThorVG",
     license="MIT",
     url="https://github.com/thorvg/thorvg",
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
+    packages=_packages,
+    package_dir=_package_dir,
+    package_data=_package_data,
     ext_modules=extensions,
     python_requires=">=3.9",
     zip_safe=False,
