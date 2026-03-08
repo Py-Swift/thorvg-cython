@@ -11,11 +11,40 @@ Designed to work with cibuildwheel for automated wheel builds.
 """
 import os
 import sys
+import subprocess
 import sysconfig
 from pathlib import Path
 
 from setuptools import Extension, find_packages, setup
 from Cython.Build import cythonize
+
+# ---------------------------------------------------------------------------
+#  Auto-detect SDKROOT on Apple platforms (macOS / iOS)
+#
+#  cibuildwheel and `uv build --python-platform` inject sys.platform:
+#    "darwin" → macOS,  "ios" → iOS device/simulator
+#  We pick the right SDK so callers never need to export SDKROOT manually.
+# ---------------------------------------------------------------------------
+if sys.platform in ("darwin", "ios") and "SDKROOT" not in os.environ:
+    # Map platform → xcrun SDK name
+    _SDK_MAP = {
+        "darwin": "macosx",
+        "ios":    "iphoneos",
+    }
+    # PLATFORM_NAME is set by Xcode / xcodebuild; prefer it for simulator
+    _xcode_pn = os.environ.get("PLATFORM_NAME", "")
+    if "simulator" in _xcode_pn.lower():
+        _sdk_name = "iphonesimulator"
+    else:
+        _sdk_name = _SDK_MAP.get(sys.platform, "macosx")
+    try:
+        sdk = subprocess.check_output(
+            ["xcrun", "--sdk", _sdk_name, "--show-sdk-path"], text=True
+        ).strip()
+        if sdk:
+            os.environ["SDKROOT"] = sdk
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass
 
 # ---------------------------------------------------------------------------
 #  Resolve paths
