@@ -29,7 +29,7 @@ environment = { THORVG_ROOT = "thorvg" }
 
 [tool.cibuildwheel.linux]
 before-all = """
-    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg && \
+    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && \
     pip install meson ninja && \
     meson setup builddir_linux --buildtype=release --default-library=static \
@@ -40,7 +40,7 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/builddir_linux/
 
 [tool.cibuildwheel.macos]
 before-all = """
-    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg && \
+    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_all.sh
 """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fat", MACOSX_DEPLOYMENT_TARGET = "11.0" }
@@ -58,7 +58,7 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\builddir_win\\
 
 [tool.cibuildwheel.ios]
 before-all = """
-    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg && \
+    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_all.sh
 """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/ios_arm64" }
