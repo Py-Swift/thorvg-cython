@@ -50,7 +50,7 @@ if sys.platform in ("darwin", "ios") and "SDKROOT" not in os.environ:
 #  Resolve paths
 # ---------------------------------------------------------------------------
 HERE = Path(__file__).resolve().parent
-THORVG_ROOT = Path(os.environ.get("THORVG_ROOT", HERE.parent))
+THORVG_ROOT = Path(os.environ.get("THORVG_ROOT", HERE / "thorvg"))
 
 # Where the C API header lives (thorvg_capi.h)
 THORVG_INCLUDE = os.environ.get(

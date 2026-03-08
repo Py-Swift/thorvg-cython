@@ -19,38 +19,46 @@ dev = ["pytest", "cibuildwheel"]
 
 # ---------------------------------------------------------------------------
 #  cibuildwheel configuration
+#
+#  Expects a "thorvg/" directory (symlink for local dev, cloned in CI).
 # ---------------------------------------------------------------------------
 [tool.cibuildwheel]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "pp* *-musllinux_i686"
-environment = { THORVG_ROOT = ".." }
+environment = { THORVG_ROOT = "thorvg" }
 
 [tool.cibuildwheel.linux]
 before-all = """
-    cd {project}/.. && \
+    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg && \
+    cd {project}/thorvg && \
     pip install meson ninja && \
     meson setup builddir_linux --buildtype=release --default-library=static \
         -Dbindings=capi -Dloaders=svg,lottie,ttf && \
     ninja -C builddir_linux
 """
-environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../builddir_linux/src" }
+environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/builddir_linux/src" }
 
 [tool.cibuildwheel.macos]
-# build_all.sh builds all Apple slices once, produces output/macos_fat/
-before-all = "cd {project}/.. && bash build_all.sh"
-environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../output/macos_fat", MACOSX_DEPLOYMENT_TARGET = "11.0" }
+before-all = """
+    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg && \
+    cd {project}/thorvg && bash build_all.sh
+"""
+environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fat", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 [tool.cibuildwheel.windows]
 before-all = """
-    cd /d {project}\\.. && \
+    if not exist {project}\\thorvg git clone https://github.com/psychowasp/thorvg.git {project}\\thorvg && \
+    cd /d {project}\\thorvg && \
     pip install meson ninja && \
     meson setup builddir_win --buildtype=release --default-library=static \
         -Dbindings=capi -Dloaders=svg,lottie,ttf && \
     ninja -C builddir_win
 """
-environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "..\\builddir_win\\src" }
+environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\builddir_win\\src" }
 
 [tool.cibuildwheel.ios]
-# build_all.sh builds all Apple slices once, produces output/ios_arm64/
-before-all = "cd {project}/.. && bash build_all.sh"
-environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../output/ios_arm64" }
+before-all = """
+    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg && \
+    cd {project}/thorvg && bash build_all.sh
+"""
+environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/ios_arm64" }
