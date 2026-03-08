@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "Cython>=3.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "thorvg-cython"
+version = "1.0.0"
+description = "Cython bindings for the ThorVG vector graphics library"
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+classifiers = [
+    "Programming Language :: Cython",
+    "Programming Language :: Python :: 3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "cibuildwheel"]
+
+# ---------------------------------------------------------------------------
+#  cibuildwheel configuration
+# ---------------------------------------------------------------------------
+[tool.cibuildwheel]
+build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
+skip = "pp* *-musllinux_i686"
+
+# Pre-build: build thorvg from source (or expect it pre-built)
+# Set THORVG_ROOT so setup.py finds headers + libs.
+environment = { THORVG_ROOT = ".." }
+
+[tool.cibuildwheel.linux]
+before-build = """
+    cd {project}/../ && \
+    pip install meson ninja && \
+    meson setup builddir_linux --buildtype=release --default-library=static -Dbindings=capi -Dloaders=svg,lottie,ttf && \
+    ninja -C builddir_linux && \
+    export THORVG_LIB_DIR=$(pwd)/builddir_linux/src
+"""
+environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../builddir_linux/src" }
+
+[tool.cibuildwheel.macos]
+before-build = """
+    cd {project}/../ && \
+    pip install meson ninja && \
+    meson setup builddir_macos --buildtype=release --default-library=static -Dbindings=capi -Dloaders=svg,lottie,ttf && \
+    ninja -C builddir_macos && \
+    export THORVG_LIB_DIR=$(pwd)/builddir_macos/src
+"""
+environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../builddir_macos/src", MACOSX_DEPLOYMENT_TARGET = "11.0" }
+
+[tool.cibuildwheel.windows]
+before-build = """
+    cd /d {project}\\.. && \
+    pip install meson ninja && \
+    meson setup builddir_win --buildtype=release --default-library=static -Dbindings=capi -Dloaders=svg,lottie,ttf && \
+    ninja -C builddir_win
+"""
+environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "..\\builddir_win\\src" }
