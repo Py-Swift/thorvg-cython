@@ -46,7 +46,7 @@ before-build = """
     ninja -C builddir_macos && \
     export THORVG_LIB_DIR=$(pwd)/builddir_macos/src
 """
-environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../builddir_macos/src", MACOSX_DEPLOYMENT_TARGET = "11.0" }
+environment = { THORVG_ROOT = "..", THORVG_LIB_DIR = "../builddir_macos/src", MACOSX_DEPLOYMENT_TARGET = "11.0", SDKROOT = "$(xcrun --show-sdk-path)" }
 
 [tool.cibuildwheel.windows]
 before-build = """

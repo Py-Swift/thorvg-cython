@@ -1,6 +1,6 @@
 """Tests for SwCanvas, Scene, Picture rendering pipeline."""
 from thorvg_cython import (
-    Result, SwCanvas, Shape, Scene, Picture, Colorspace, PixelBuffer,
+    Result, SwCanvas, Shape, Scene, Picture, Colorspace,
     MaskMethod,
 )
 from conftest import W, H, render

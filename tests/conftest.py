@@ -1,6 +1,6 @@
 """Shared fixtures for thorvg-cython tests."""
 import pytest
-from thorvg_cython import Engine, SwCanvas, PixelBuffer, Colorspace
+from thorvg_cython import Engine, SwCanvas, Colorspace
 
 W, H = 200, 200
 
@@ -14,17 +14,9 @@ def engine():
 
 
 @pytest.fixture()
-def pixel_buffer():
-    """Fresh 200x200 ARGB8888 PixelBuffer."""
-    return PixelBuffer(W, H, Colorspace.ARGB8888)
-
-
-@pytest.fixture()
-def canvas(pixel_buffer):
-    """SwCanvas bound to a PixelBuffer, ready to draw."""
-    c = SwCanvas()
-    c.set_target_buffer(pixel_buffer)
-    return c
+def canvas():
+    """SwCanvas with integrated pixel buffer, ready to draw."""
+    return SwCanvas(W, H, Colorspace.ARGB8888)
 
 
 def render(canvas):
