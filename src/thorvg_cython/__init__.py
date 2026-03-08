@@ -22,6 +22,8 @@ from .thorvg import (  # noqa: F401
     Point,
     Matrix,
     TextMetrics,
+    # Buffer
+    PixelBuffer,
     # Core
     Engine,
     Canvas,

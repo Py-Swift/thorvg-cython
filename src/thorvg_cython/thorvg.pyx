@@ -5,7 +5,7 @@ Every public class is a single ``cdef class`` importable from Python.
 """
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, int32_t
 from libc.stdlib cimport malloc, free
-from libc.string cimport memcpy
+from libc.string cimport memcpy, memset
 
 cimport thorvg_cython.cthorvg as tvg
 
@@ -144,6 +144,107 @@ class TextMetrics:
     def __init__(self, float ascent=0, float descent=0, float linegap=0, float advance=0):
         self.ascent = ascent; self.descent = descent
         self.linegap = linegap; self.advance = advance
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  PixelBuffer  (buffer-protocol pixel storage for zero-copy blitting)
+# ═══════════════════════════════════════════════════════════════════
+
+cdef class PixelBuffer:
+    """
+    Heap-allocated RGBA pixel buffer that implements the Python buffer
+    protocol (:pep:`3118`).
+
+    Frameworks like Kivy can blit directly from this object without an
+    intermediate ``bytes`` copy::
+
+        buf = PixelBuffer(800, 600, Colorspace.ARGB8888)
+        canvas = SwCanvas()
+        canvas.set_target_buffer(buf)
+        # … add paints, draw, sync …
+        texture.blit_buffer(buf, colorfmt='rgba', bufferfmt='ubyte')
+    """
+    cdef uint32_t* _data
+    cdef uint32_t  _w, _h, _stride
+    cdef int       _cs
+    cdef Py_ssize_t _nbytes
+    cdef Py_ssize_t _shape[1]
+    cdef Py_ssize_t _strides[1]
+
+    def __cinit__(self, uint32_t w, uint32_t h, int cs=0,
+                  uint32_t stride=0):
+        self._w = w
+        self._h = h
+        self._stride = stride if stride != 0 else w
+        self._cs = cs
+        self._nbytes = <Py_ssize_t>(self._stride * h * sizeof(uint32_t))
+        self._data = <uint32_t*>malloc(self._nbytes)
+        if self._data == NULL:
+            raise MemoryError("Failed to allocate pixel buffer")
+        memset(self._data, 0, self._nbytes)
+        self._shape[0]   = self._nbytes
+        self._strides[0] = 1
+
+    def __dealloc__(self):
+        if self._data != NULL:
+            free(self._data)
+            self._data = NULL
+
+    # ---- buffer protocol ------------------------------------------------
+
+    def __getbuffer__(self, Py_buffer *buf, int flags):
+        buf.buf        = <void*>self._data
+        buf.len        = self._nbytes
+        buf.readonly   = 0
+        buf.format     = "B"          # unsigned bytes
+        buf.ndim       = 1
+        buf.shape      = self._shape
+        buf.strides    = self._strides
+        buf.suboffsets = NULL
+        buf.itemsize   = 1
+        buf.obj        = self          # prevent GC while view alive
+
+    def __releasebuffer__(self, Py_buffer *buf):
+        pass
+
+    # ---- convenience API ------------------------------------------------
+
+    @property
+    def width(self):
+        return self._w
+
+    @property
+    def height(self):
+        return self._h
+
+    @property
+    def stride(self):
+        return self._stride
+
+    @property
+    def colorspace(self):
+        return Colorspace(self._cs)
+
+    @property
+    def nbytes(self):
+        return self._nbytes
+
+    @property
+    def ptr(self):
+        """Raw pointer as int — for advanced / interop use."""
+        return <unsigned long>self._data
+
+    def clear(self):
+        """Zero out all pixels."""
+        memset(self._data, 0, self._nbytes)
+
+    def __len__(self):
+        return self._nbytes
+
+    def __repr__(self):
+        return (f"PixelBuffer({self._w}x{self._h}, "
+                f"cs={Colorspace(self._cs).name}, "
+                f"{self._nbytes} bytes)")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -386,14 +487,30 @@ cdef class Canvas:
 
 
 cdef class SwCanvas(Canvas):
+    cdef object _buf_ref          # prevent GC of backing PixelBuffer
+
     def __cinit__(self, int engine_option=1):
         self._c = tvg.tvg_swcanvas_create(<tvg.Tvg_Engine_Option>engine_option)
+        self._buf_ref = None
 
     def set_target(self, unsigned long buf_ptr, uint32_t stride,
                    uint32_t w, uint32_t h, int cs=0):
+        self._buf_ref = None      # release any previous buffer ref
         return Result(tvg.tvg_swcanvas_set_target(
             self._c, <uint32_t*><void*>buf_ptr, stride, w, h,
             <tvg.Tvg_Colorspace>cs))
+
+    def set_target_buffer(self, PixelBuffer buf):
+        """Set target using a PixelBuffer — zero-copy buffer protocol."""
+        self._buf_ref = buf       # prevent GC while canvas uses it
+        return Result(tvg.tvg_swcanvas_set_target(
+            self._c, buf._data, buf._stride, buf._w, buf._h,
+            <tvg.Tvg_Colorspace>buf._cs))
+
+    @property
+    def buffer(self):
+        """The PixelBuffer bound via set_target_buffer, or None."""
+        return self._buf_ref
 
 
 # ═══════════════════════════════════════════════════════════════════
