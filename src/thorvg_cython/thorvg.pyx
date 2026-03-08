@@ -277,15 +277,19 @@ class Engine:
     def __init__(self, unsigned int threads=0):
         self.threads = threads
         self._result = <int>tvg.tvg_engine_init(threads)
+        self._termed = False
 
     def __del__(self):
-        tvg.tvg_engine_term()
+        if not self._termed:
+            tvg.tvg_engine_term()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        tvg.tvg_engine_term()
+        if not self._termed:
+            tvg.tvg_engine_term()
+            self._termed = True
 
     @property
     def init_result(self):
