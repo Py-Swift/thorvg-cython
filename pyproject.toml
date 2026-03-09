@@ -68,5 +68,6 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/ios_arm6
 
 [dependency-groups]
 dev = [
+    "meson>=1.10.1",
     "pytest>=8.4.2",
 ]
