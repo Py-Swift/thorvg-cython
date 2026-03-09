@@ -26,7 +26,7 @@ jobs:
     - name: Install cibuildwheel
       run: |
         uv tool install cibuildwheel
-        apt update && apt install -y meson ninja
+        sudo apt-get update && sudo apt-get install -y meson ninja
 
     - name: Build wheels
       run: cibuildwheel --output-dir wheelhouse
