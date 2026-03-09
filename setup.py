@@ -328,7 +328,8 @@ elif _is_android_build():
     #  Android: link against static libthorvg.a
     #
     #  THORVG_LIB_DIR is the base output dir (e.g. thorvg/output).
-    #  Detect the target arch from _PYTHON_HOST_PLATFORM (e.g. android-21-x86_64)
+    #  Detect the target arch from _PYTHON_HOST_PLATFORM
+    #  (e.g. android-21-arm64_v8a or android-21-x86_64, per PEP 738)
     #  and append the correct subdir (android_aarch64 or android_x86_64).
     # -----------------------------------------------------------------------
     _android_arch = "aarch64"  # default
