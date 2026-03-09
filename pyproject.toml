@@ -62,7 +62,7 @@ before-all = """
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     bash {project}/tools/thorvg_scripts/build_android.sh {project}/thorvg
 """
-environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/android_aarch64" }
+environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output" }
 
 [dependency-groups]
 dev = [

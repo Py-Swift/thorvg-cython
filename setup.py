@@ -319,21 +319,33 @@ elif sys.platform == "android":
     # -----------------------------------------------------------------------
     #  Android: link against static libthorvg.a
     #
-    #  Priority:
-    #    1. THORVG_LIB_DIR / libthorvg.a       (build_android.sh output)
-    #    2. THORVG_LIB_DIR / libthorvg-1.a     (raw meson output)
-    #    3. Fallback: let linker search for "thorvg"
+    #  THORVG_LIB_DIR is the base output dir (e.g. thorvg/output).
+    #  Detect the target arch from _PYTHON_HOST_PLATFORM (e.g. android-21-x86_64)
+    #  and append the correct subdir (android_aarch64 or android_x86_64).
     # -----------------------------------------------------------------------
-    _lib_dir = Path(THORVG_LIB_DIR)
+    _android_arch = "aarch64"  # default
+    _host_plat = os.environ.get("_PYTHON_HOST_PLATFORM", "")
+    if "x86_64" in _host_plat:
+        _android_arch = "x86_64"
+    elif "aarch64" in _host_plat or "arm64" in _host_plat:
+        _android_arch = "aarch64"
+
+    _lib_dir = Path(THORVG_LIB_DIR) / f"android_{_android_arch}"
+    if not _lib_dir.exists():
+        # Fallback: maybe THORVG_LIB_DIR already includes the arch subdir
+        _lib_dir = Path(THORVG_LIB_DIR)
+
     _android_static = _lib_dir / "libthorvg.a"
     _android_static_1 = _lib_dir / "libthorvg-1.a"
+
+    print(f"[setup.py] Android arch={_android_arch}, lib_dir={_lib_dir}")
 
     if _android_static.exists():
         extra_link_args.append(str(_android_static))
     elif _android_static_1.exists():
         extra_link_args.append(str(_android_static_1))
     else:
-        library_dirs.append(THORVG_LIB_DIR)
+        library_dirs.append(str(_lib_dir))
         libraries.append("thorvg")
 
 else:
