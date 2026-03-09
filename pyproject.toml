@@ -66,7 +66,7 @@ before-all = """
 # The host app (Gradle project) is responsible for providing libc++_shared.so.
 # Skip cibuildwheel's default repair which tries to bundle it.
 # repair-wheel-command = "cp {wheel} {dest_dir}/"
-environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output" }
+environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output", ANDROID_API_LEVEL = "24" }
 test-sources = ["tests"]
 test-command = "python -m pytest ./tests -v"
 
