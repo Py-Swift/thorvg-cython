@@ -33,11 +33,6 @@ jobs:
         git clone https://github.com/psychowasp/thorvg.git
         cd thorvg && bash build_all.sh
 
-    - name: Build and install thorvg-cython
-      run: |
-        THORVG_ROOT=thorvg THORVG_LIB_DIR=thorvg/output/macos_fat uv pip install meson ninja cython
-        THORVG_ROOT=thorvg THORVG_LIB_DIR=thorvg/output/macos_fat uv pip install -e .
-
     - name: Run tests
       run: |
-        uv run pytest tests/ -v
+        THORVG_ROOT=thorvg THORVG_LIB_DIR=thorvg/output/macos_fat uv run pytest tests/ -v
