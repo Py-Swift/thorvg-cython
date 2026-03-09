@@ -63,6 +63,33 @@ before-all = """
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     bash {project}/tools/thorvg_scripts/build_android.sh {project}/thorvg
 """
+# Bundle libc++_shared.so from the NDK into the wheel (the extension .so needs it at runtime).
+# We do this manually instead of cibuildwheel's default repair to avoid other issues.
+repair-wheel-command = """
+    bash -c '
+    WHEEL="{wheel}"
+    DEST="{dest_dir}"
+    NDK="${{ANDROID_NDK_HOME:-$ANDROID_NDK}}"
+    ARCH=$(python3 -c "import zipfile,re,sys; z=zipfile.ZipFile(sys.argv[1]); m=re.search(r\"(x86_64|aarch64)\", \" \".join(z.namelist())); print(m.group(1) if m else \"\")" "$WHEEL")
+    if [ "$ARCH" = "x86_64" ]; then
+        TRIPLE="x86_64-linux-android"
+    elif [ "$ARCH" = "aarch64" ]; then
+        TRIPLE="aarch64-linux-android"
+    fi
+    LIBCPP="$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/$TRIPLE/libc++_shared.so"
+    if [ -f "$LIBCPP" ] && [ -n "$TRIPLE" ]; then
+        TMPDIR=$(mktemp -d)
+        python3 -m zipfile -e "$WHEEL" "$TMPDIR"
+        PKG_DIR=$(find "$TMPDIR" -name "thorvg_cython" -type d | head -1)
+        cp "$LIBCPP" "$PKG_DIR/"
+        WHLNAME=$(basename "$WHEEL")
+        cd "$TMPDIR" && python3 -m zipfile -c "$DEST/$WHLNAME" * && cd -
+        rm -rf "$TMPDIR"
+    else
+        cp "$WHEEL" "$DEST/"
+    fi
+    '
+"""
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output" }
 test-sources = ["tests"]
 test-command = "python -m pytest ./tests -v"
