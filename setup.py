@@ -142,6 +142,14 @@ def _is_macos_build() -> bool:
         return True
     return False
 
+def _is_android_build() -> bool:
+    """Detect whether we are cross-compiling for Android."""
+    if PLATFORM == "android":
+        return True
+    if "android" in _host_platform.lower():
+        return True
+    return False
+
 def _get_arch() -> str:
     """Best-effort target architecture."""
     if _archflags:
@@ -315,7 +323,7 @@ elif sys.platform.startswith("win"):
 
     extra_compile_args = ["/std:c++17", "/EHsc", "/DTVG_STATIC"]
 
-elif sys.platform == "android":
+elif _is_android_build():
     # -----------------------------------------------------------------------
     #  Android: link against static libthorvg.a
     #
