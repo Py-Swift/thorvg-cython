@@ -1,0 +1,85 @@
+# Build wheels with cibuildwheel on all platforms
+# Validates that the pyproject.toml [tool.cibuildwheel] config is correct
+#
+# Triggered manually or on tagged releases.
+# Wheels are uploaded as artifacts (not published to PyPI).
+
+name: cibuildwheel
+
+on:
+  workflow_dispatch:
+  push:
+    tags: [ "v*" ]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
+
+    - name: Install cibuildwheel + meson
+      run: |
+        uv tool install cibuildwheel
+        uv tool install meson
+
+    - name: Build wheels
+      run: cibuildwheel --output-dir wheelhouse
+      env:
+        CIBW_BUILD: "cp313-manylinux_x86_64"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: wheels-linux
+        path: wheelhouse/*.whl
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
+
+    - name: Install cibuildwheel + meson
+      run: |
+        uv tool install cibuildwheel
+        uv tool install meson
+
+    - name: Build wheels
+      run: cibuildwheel --output-dir wheelhouse
+      env:
+        CIBW_BUILD: "cp313-macosx_arm64"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: wheels-macos
+        path: wheelhouse/*.whl
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
+
+    - name: Install cibuildwheel + meson
+      run: |
+        uv tool install cibuildwheel
+        uv tool install meson
+
+    - name: Build wheels
+      run: cibuildwheel --output-dir wheelhouse
+      env:
+        CIBW_BUILD: "cp313-win_amd64"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: wheels-windows
+        path: wheelhouse/*.whl
