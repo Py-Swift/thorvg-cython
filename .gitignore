@@ -37,3 +37,4 @@ src/.framework/
 
 # thorvg source (symlink for local dev, cloned in CI)
 thorvg
+uv.lock
