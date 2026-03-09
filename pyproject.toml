@@ -29,7 +29,7 @@ environment = { THORVG_ROOT = "thorvg" }
 
 [tool.cibuildwheel.linux]
 before-all = """
-    #python -m pip install meson ninja
+    python -m pip install meson ninja
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_linux.sh
     ls -la {project}/thorvg/output/linux_x86_64/
@@ -38,7 +38,7 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/linux_x8
 
 [tool.cibuildwheel.macos]
 before-all = """
-    #python -m pip install meson ninja
+    python -m pip install meson ninja
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_all.sh
     ls -la {project}/thorvg/output/macos_fat/
@@ -47,7 +47,7 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fa
 
 [tool.cibuildwheel.windows]
 before-all = """
-    #python -m pip install meson ninja
+    python -m pip install meson ninja
     if not exist {project}\\thorvg git clone https://github.com/psychowasp/thorvg.git {project}\\thorvg
     cd /d {project}\\thorvg && build_windows.bat
     dir {project}\\thorvg\\output\\windows_x64\\
@@ -56,6 +56,7 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\output\\window
 
 [tool.cibuildwheel.ios]
 before-all = """
+    python -m pip install meson ninja
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_all.sh
 """
