@@ -10,45 +10,42 @@ on:
     branches: [ "master" ]
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            thorvg-build: bash build_all.sh
-            thorvg-lib-dir: thorvg/output/macos_fat
-          - os: windows-latest
-            thorvg-build: build_windows.bat
-            thorvg-lib-dir: thorvg\output\windows_x64
-
-    runs-on: ${{ matrix.os }}
-
+  macos:
+    runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
-
-    - name: Set up Python 3.13
-      uses: actions/setup-python@v5
+    - uses: actions/setup-python@v5
       with:
         python-version: "3.13"
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v5
+    - uses: astral-sh/setup-uv@v5
 
     - name: Clone and build ThorVG
       run: |
         uv tool install meson
         git clone https://github.com/psychowasp/thorvg.git
-        cd thorvg && ${{ matrix.thorvg-build }}
+        cd thorvg && bash build_all.sh
 
-    - name: Run tests (macOS)
-      if: runner.os != 'Windows'
+    - name: Run tests
       run: |
-        THORVG_ROOT=thorvg THORVG_LIB_DIR=${{ matrix.thorvg-lib-dir }} uv run pytest tests/ -v
+        THORVG_ROOT=thorvg THORVG_LIB_DIR=thorvg/output/macos_fat uv run pytest tests/ -v
 
-    - name: Run tests (Windows)
-      if: runner.os == 'Windows'
+  windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
+
+    - name: Clone and build ThorVG
+      run: |
+        uv tool install meson
+        git clone https://github.com/psychowasp/thorvg.git
+        cd thorvg && build_windows.bat
+
+    - name: Run tests
       run: |
         $env:THORVG_ROOT="thorvg"
-        $env:THORVG_LIB_DIR="${{ matrix.thorvg-lib-dir }}"
+        $env:THORVG_LIB_DIR="thorvg\output\windows_x64"
         uv run pytest tests/ -v
