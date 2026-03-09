@@ -26,10 +26,11 @@ dev = ["pytest", "cibuildwheel", "meson"]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "pp* *-musllinux_i686"
 environment = { THORVG_ROOT = "thorvg" }
+xbuild-tools = ["meson", "ninja"] # should replace "python -m pip install meson ninja" now.
+
 
 [tool.cibuildwheel.linux]
 before-all = """
-    python -m pip install meson ninja
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_linux.sh
 """
@@ -37,7 +38,6 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/linux_x8
 
 [tool.cibuildwheel.macos]
 before-all = """
-    python -m pip install meson ninja
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_apple.sh
 """
@@ -49,7 +49,6 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\output\\window
 
 [tool.cibuildwheel.ios]
 before-all = """
-    python -m pip install meson ninja
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_apple.sh
 """
