@@ -13,6 +13,10 @@ MESON_COMMON="--buildtype=release --default-library=static -Dthreads=true -Dbind
 
 ARCH="$(uname -m)"
 
+# Ensure meson and ninja are available
+command -v meson >/dev/null 2>&1 || pip install meson
+command -v ninja >/dev/null 2>&1 || pip install ninja
+
 echo "=== ThorVG Linux Build ==="
 echo "Root: $ROOT_DIR"
 echo "Arch: $ARCH"
@@ -24,11 +28,9 @@ mkdir -p "$OUTPUT_DIR"
 BUILD_DIR="$BUILD_ROOT/$ARCH"
 OUT_DIR="$OUTPUT_DIR/linux_$ARCH"
 
-
-
 echo ">>> Building: linux_$ARCH"
-$(which meson) setup "$BUILD_DIR" $MESON_COMMON 2>&1 | tail -5
-$(which ninja) -C "$BUILD_DIR" 2>&1
+meson setup "$BUILD_DIR" $MESON_COMMON 2>&1 | tail -5
+ninja -C "$BUILD_DIR" 2>&1
 echo "<<< Done: linux_$ARCH"
 echo ""
 
