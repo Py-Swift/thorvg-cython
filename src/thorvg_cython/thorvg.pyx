@@ -409,7 +409,9 @@ cdef class Paint:
 
     def get_mask_method(self):
         cdef tvg.Tvg_Paint target = NULL
-        cdef tvg.Tvg_Mask_Method method
+        # Zero-init: C API writes only 1 byte (MaskMethod is uint8_t)
+        # into a 4-byte Tvg_Mask_Method via reinterpret_cast
+        cdef tvg.Tvg_Mask_Method method = <tvg.Tvg_Mask_Method>0
         cdef tvg.Tvg_Result r = tvg.tvg_paint_get_mask_method(
             self._p, <tvg.Tvg_Paint>&target, &method)
         return Result(r), MaskMethod(method)
