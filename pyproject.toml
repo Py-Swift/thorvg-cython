@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "Cython>=3.0", "ninja", "meson", "meson-python"]
+requires = ["setuptools>=68", "Cython>=3.0", "ninja"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -32,7 +32,6 @@ before-all = """
     python -m pip install meson ninja
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_linux.sh
-    ls -la {project}/thorvg/output/linux_x86_64/
 """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/linux_x86_64" }
 
@@ -41,7 +40,6 @@ before-all = """
     python -m pip install meson ninja
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_all.sh
-    ls -la {project}/thorvg/output/macos_fat/
 """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fat", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
@@ -50,7 +48,6 @@ before-all = """
     python -m pip install meson ninja
     if not exist {project}\\thorvg git clone https://github.com/psychowasp/thorvg.git {project}\\thorvg
     cd /d {project}\\thorvg && build_windows.bat
-    dir {project}\\thorvg\\output\\windows_x64\\
 """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\output\\windows_x64" }
 
