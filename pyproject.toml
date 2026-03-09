@@ -59,6 +59,9 @@ before-all = """
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     bash {project}/tools/thorvg_scripts/build_android.sh {project}/thorvg
 """
+# Skip the default repair which requires ANDROID_API_LEVEL >= 24 to bundle
+# libc++_shared.so — the host app is responsible for providing it at runtime.
+repair-wheel-command = "cp {wheel} {dest_dir}/"
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output" }
 
 [dependency-groups]
