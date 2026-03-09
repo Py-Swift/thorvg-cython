@@ -23,7 +23,7 @@ jobs:
       run: |
         uv tool install meson
         git clone https://github.com/psychowasp/thorvg.git
-        cd thorvg && bash build_apple.sh
+        bash tools/thorvg_scripts/build_macos.sh thorvg
 
     - name: Run tests
       run: |
@@ -42,7 +42,7 @@ jobs:
       run: |
         uv tool install meson
         git clone https://github.com/psychowasp/thorvg.git
-        cd thorvg && bash build_linux.sh
+        bash tools/thorvg_scripts/build_linux.sh thorvg
 
     - name: Run tests
       run: |
@@ -61,7 +61,7 @@ jobs:
       run: |
         uv tool install meson
         git clone https://github.com/psychowasp/thorvg.git
-        cd thorvg; .\build_windows.bat
+        call tools\thorvg_scripts\build_windows.bat thorvg
 
     - name: Run tests
       run: |

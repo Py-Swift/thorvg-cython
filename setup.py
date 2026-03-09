@@ -317,18 +317,46 @@ elif sys.platform.startswith("win"):
 
 elif sys.platform == "android":
     # -----------------------------------------------------------------------
-    #  Android: link against libthorvg.so / .a
+    #  Android: link against static libthorvg.a
+    #
+    #  Priority:
+    #    1. THORVG_LIB_DIR / libthorvg.a       (build_android.sh output)
+    #    2. THORVG_LIB_DIR / libthorvg-1.a     (raw meson output)
+    #    3. Fallback: let linker search for "thorvg"
     # -----------------------------------------------------------------------
-    library_dirs.append(THORVG_LIB_DIR)
-    libraries.append("thorvg")
+    _lib_dir = Path(THORVG_LIB_DIR)
+    _android_static = _lib_dir / "libthorvg.a"
+    _android_static_1 = _lib_dir / "libthorvg-1.a"
+
+    if _android_static.exists():
+        extra_link_args.append(str(_android_static))
+    elif _android_static_1.exists():
+        extra_link_args.append(str(_android_static_1))
+    else:
+        library_dirs.append(THORVG_LIB_DIR)
+        libraries.append("thorvg")
 
 else:
     # -----------------------------------------------------------------------
-    #  Linux / other: link against libthorvg.so / .a
+    #  Linux / other: link against static libthorvg.a or shared .so
+    #
+    #  Priority:
+    #    1. THORVG_LIB_DIR / libthorvg.a       (build_linux.sh output)
+    #    2. THORVG_LIB_DIR / libthorvg-1.a     (raw meson output)
+    #    3. Fallback: linker search with -Wl,-rpath
     # -----------------------------------------------------------------------
-    library_dirs.append(THORVG_LIB_DIR)
-    libraries.append("thorvg")
-    extra_link_args.append(f"-Wl,-rpath,{THORVG_LIB_DIR}")
+    _lib_dir = Path(THORVG_LIB_DIR)
+    _linux_static = _lib_dir / "libthorvg.a"
+    _linux_static_1 = _lib_dir / "libthorvg-1.a"
+
+    if _linux_static.exists():
+        extra_link_args.append(str(_linux_static))
+    elif _linux_static_1.exists():
+        extra_link_args.append(str(_linux_static_1))
+    else:
+        library_dirs.append(THORVG_LIB_DIR)
+        libraries.append("thorvg")
+        extra_link_args.append(f"-Wl,-rpath,{THORVG_LIB_DIR}")
 
 # Append C++ standard library (macOS/iOS use libc++, Linux links libstdc++ automatically)
 if sys.platform in ("darwin", "ios"):

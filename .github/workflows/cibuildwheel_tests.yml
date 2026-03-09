@@ -55,7 +55,7 @@ jobs:
     - name: Build wheels
       run: cibuildwheel --output-dir wheelhouse
       env:
-        CIBW_BUILD: "cp313-macosx_arm64"
+        CIBW_BUILD: "cp313-macosx_arm64 cp313-macosx_x86_64 cp313-macosx_universal2"
 
     - uses: actions/upload-artifact@v4
       with:
@@ -81,11 +81,37 @@ jobs:
       run: cibuildwheel --platform ios --archs "arm64_iphoneos arm64_iphonesimulator x86_64_iphonesimulator" --output-dir wheelhouse
       env:
         CIBW_BUILD: "cp313-ios_*"
-      
+
+    - name: Inject xcframework into iOS wheels
+      run: python tools/add-ios-frameworks.py wheelhouse --xcframework thorvg/output/thorvg.xcframework
 
     - uses: actions/upload-artifact@v4
       with:
         name: wheels-ios
+        path: wheelhouse/*.whl
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
+
+    - name: Install cibuildwheel
+      run: |
+        uv tool install cibuildwheel
+        sudo apt-get update && sudo apt-get install -y meson ninja-build
+
+    - name: Build wheels
+      run: cibuildwheel --output-dir wheelhouse
+      env:
+        CIBW_BUILD: "cp313-android_*"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: wheels-android
         path: wheelhouse/*.whl
 
   build-windows:
