@@ -23,7 +23,7 @@ jobs:
       run: |
         uv tool install meson
         git clone https://github.com/psychowasp/thorvg.git
-        cd thorvg && bash build_all.sh
+        cd thorvg && bash build_apple.sh
 
     - name: Run tests
       run: |

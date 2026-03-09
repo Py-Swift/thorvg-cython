@@ -39,7 +39,7 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/linux_x8
 before-all = """
     python -m pip install meson ninja
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
-    cd {project}/thorvg && bash build_all.sh
+    cd {project}/thorvg && bash build_apple.sh
 """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fat", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
@@ -51,7 +51,7 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\output\\window
 before-all = """
     python -m pip install meson ninja
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
-    cd {project}/thorvg && bash build_all.sh
+    cd {project}/thorvg && bash build_apple.sh
 """
 # repair-wheel-command is not executed on iOS (cross-compilation platform).
 # Use tools/add-ios-frameworks.py as a post-build step instead:
