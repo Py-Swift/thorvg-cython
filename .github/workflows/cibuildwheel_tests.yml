@@ -24,7 +24,7 @@ jobs:
     - uses: astral-sh/setup-uv@v5
 
     - name: Install cibuildwheel
-      run: uv tool install cibuildwheel
+      run: uv tool install cibuildwheel meson
 
     - name: Build wheels
       run: cibuildwheel --output-dir wheelhouse
@@ -46,7 +46,7 @@ jobs:
     - uses: astral-sh/setup-uv@v5
 
     - name: Install cibuildwheel
-      run: uv tool install cibuildwheel
+      run: uv tool install cibuildwheel meson
 
     - name: Build wheels
       run: cibuildwheel --output-dir wheelhouse
@@ -68,7 +68,7 @@ jobs:
     - uses: astral-sh/setup-uv@v5
 
     - name: Install cibuildwheel
-      run: uv tool install cibuildwheel
+      run: uv tool install cibuildwheel meson
 
     - name: Build wheels
       run: cibuildwheel --platform ios --archs "arm64_iphoneos arm64_iphonesimulator x86_64_iphonesimulator" --output-dir wheelhouse
@@ -91,7 +91,7 @@ jobs:
     - uses: astral-sh/setup-uv@v5
 
     - name: Install cibuildwheel
-      run: uv tool install cibuildwheel
+      run: uv tool install cibuildwheel meson
 
     - name: Build wheels
       run: cibuildwheel --output-dir wheelhouse
