@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thorvg-cython"
-version = "1.0.0"
+version = "0.0.1"
 description = "Cython bindings for the ThorVG vector graphics library"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = "MIT"
 classifiers = [
     "Programming Language :: Cython",
@@ -23,9 +23,11 @@ dev = ["pytest", "cibuildwheel", "meson", "ninja"]
 #  Expects a "thorvg/" directory (symlink for local dev, cloned in CI).
 # ---------------------------------------------------------------------------
 [tool.cibuildwheel]
-build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
+build = "cp311-* cp312-* cp313-* cp314-*"
 skip = "pp* *-musllinux_i686"
 environment = { THORVG_ROOT = "thorvg" }
+test-requires = ["pytest"]
+test-command = "pytest {project}/tests -v"
 
 
 [tool.cibuildwheel.linux]
@@ -53,6 +55,8 @@ before-all = """
 """
 xbuild-tools = ["ninja"]
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/ios_arm64" }
+test-sources = ["tests"]
+test-command = "python -m pytest ./tests -v"
 
 [tool.cibuildwheel.android]
 before-all = """
@@ -63,6 +67,8 @@ before-all = """
 # libc++_shared.so — the host app is responsible for providing it at runtime.
 repair-wheel-command = "cp {wheel} {dest_dir}/"
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output" }
+test-sources = ["tests"]
+test-command = "python -m pytest ./tests -v"
 
 [dependency-groups]
 dev = [
