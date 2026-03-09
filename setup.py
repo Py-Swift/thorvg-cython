@@ -257,11 +257,44 @@ elif _is_macos_build():
 
 elif sys.platform.startswith("win"):
     # -----------------------------------------------------------------------
-    #  Windows: link against thorvg.lib / thorvg-1.dll
+    #  Windows: link against thorvg static lib.
+    #
+    #  build_windows.bat produces:
+    #    output/windows_x64/thorvg.lib   (from meson static build)
+    #  or the raw meson output:
+    #    builddir_win/src/thorvg-1.lib
+    #    builddir_win/src/libthorvg-1.a  (MinGW)
+    #
+    #  Search order:
+    #    1. THORVG_LIB_DIR / thorvg.lib       (build_windows.bat output)
+    #    2. THORVG_LIB_DIR / thorvg-1.lib     (raw meson MSVC output)
+    #    3. THORVG_LIB_DIR / libthorvg-1.a    (raw meson MinGW output)
+    #    4. output/windows_x64/thorvg.lib     (default build_windows.bat)
+    #    5. Fallback: let linker search for "thorvg"
     # -----------------------------------------------------------------------
-    library_dirs.append(THORVG_LIB_DIR)
-    libraries.append("thorvg")
-    extra_compile_args = ["/std:c++17"]
+    _lib_dir = Path(THORVG_LIB_DIR)
+    _win_static = _lib_dir / "thorvg.lib"
+    _win_meson = _lib_dir / "thorvg-1.lib"
+    _win_mingw = _lib_dir / "libthorvg-1.a"
+    _win_default = THORVG_ROOT / "output" / "windows_x64" / "thorvg.lib"
+
+    if _win_static.exists():
+        library_dirs.append(THORVG_LIB_DIR)
+        libraries.append("thorvg")
+    elif _win_meson.exists():
+        library_dirs.append(THORVG_LIB_DIR)
+        libraries.append("thorvg-1")
+    elif _win_mingw.exists():
+        library_dirs.append(THORVG_LIB_DIR)
+        libraries.append("thorvg-1")
+    elif _win_default.exists():
+        library_dirs.append(str(_win_default.parent))
+        libraries.append("thorvg")
+    else:
+        library_dirs.append(THORVG_LIB_DIR)
+        libraries.append("thorvg")
+
+    extra_compile_args = ["/std:c++17", "/EHsc"]
 
 elif sys.platform == "android":
     # -----------------------------------------------------------------------

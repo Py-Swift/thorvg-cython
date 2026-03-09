@@ -47,14 +47,10 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fa
 
 [tool.cibuildwheel.windows]
 before-all = """
-    if not exist {project}\\thorvg git clone https://github.com/psychowasp/thorvg.git {project}\\thorvg && \
-    cd /d {project}\\thorvg && \
-    pip install meson ninja && \
-    meson setup builddir_win --buildtype=release --default-library=static \
-        -Dbindings=capi -Dloaders=svg,lottie,ttf && \
-    ninja -C builddir_win
+    if not exist {project}\\thorvg git clone https://github.com/psychowasp/thorvg.git {project}\\thorvg
+    cd /d {project}\\thorvg && build_windows.bat
 """
-environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\builddir_win\\src" }
+environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\output\\windows_x64" }
 
 [tool.cibuildwheel.ios]
 before-all = """
