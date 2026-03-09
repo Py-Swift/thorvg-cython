@@ -47,7 +47,7 @@ before-all = """
     if not exist {project}\\thorvg git clone https://github.com/psychowasp/thorvg.git {project}\\thorvg
     call {project}\\tools\\thorvg_scripts\\build_windows.bat {project}\\thorvg
 """
-environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\output\\windows_x64" }
+environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/windows_x64" }
 
 [tool.cibuildwheel.ios]
 before-all = """
