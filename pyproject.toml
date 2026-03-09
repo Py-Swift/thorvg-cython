@@ -31,25 +31,28 @@ environment = { THORVG_ROOT = "thorvg" }
 [tool.cibuildwheel.linux]
 before-all = """
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
-    cd {project}/thorvg && bash build_linux.sh
+    bash {project}/tools/thorvg/build_linux.sh {project}/thorvg
 """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/linux_x86_64" }
 
 [tool.cibuildwheel.macos]
 before-all = """
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
-    cd {project}/thorvg && bash build_apple.sh
+    bash {project}/tools/thorvg/build_apple.sh {project}/thorvg
 """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fat", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 [tool.cibuildwheel.windows]
-before-all = "call {project}\\ci\\prepare_thorvg_windows.bat {project}"
+before-all = """
+    if not exist {project}\\thorvg git clone https://github.com/psychowasp/thorvg.git {project}\\thorvg
+    call {project}\\tools\\thorvg\\build_windows.bat {project}\\thorvg
+"""
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\output\\windows_x64" }
 
 [tool.cibuildwheel.ios]
 before-all = """
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
-    cd {project}/thorvg && bash build_apple.sh
+    bash {project}/tools/thorvg/build_apple.sh {project}/thorvg
 """
 xbuild-tools = ["ninja"]
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/ios_arm64" }
