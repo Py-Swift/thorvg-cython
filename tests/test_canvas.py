@@ -124,6 +124,6 @@ def test_mask_method(canvas):
     s2.set_fill_color(255, 255, 255)
 
     assert s1.set_mask_method(s2, MaskMethod.ALPHA) == Result.SUCCESS
-    r, method = s1.get_mask_method(s2)
+    r, method = s1.get_mask_method()
     assert r == Result.SUCCESS
     assert method == MaskMethod.ALPHA

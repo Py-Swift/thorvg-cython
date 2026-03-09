@@ -407,10 +407,11 @@ cdef class Paint:
         return Result(tvg.tvg_paint_set_mask_method(
             self._p, target._p, <tvg.Tvg_Mask_Method>method))
 
-    def get_mask_method(self, Paint target):
+    def get_mask_method(self):
+        cdef tvg.Tvg_Paint target = NULL
         cdef tvg.Tvg_Mask_Method method
         cdef tvg.Tvg_Result r = tvg.tvg_paint_get_mask_method(
-            self._p, target._p, &method)
+            self._p, <tvg.Tvg_Paint>&target, &method)
         return Result(r), MaskMethod(method)
 
     # -- clipping --
