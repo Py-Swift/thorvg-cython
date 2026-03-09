@@ -67,14 +67,24 @@ if errorlevel 1 (
 )
 
 if not exist "%_OUT_DIR%" mkdir "%_OUT_DIR%"
+
+REM Try all known meson static lib output names
+echo Searching for static library in %_BUILD_DIR%\src\ ...
+dir "%_BUILD_DIR%\src\*.lib" "%_BUILD_DIR%\src\*.a" 2>nul
+
 copy /y "%_BUILD_DIR%\src\libthorvg-1.a" "%_OUT_DIR%\thorvg.lib" >nul 2>&1
 if not exist "%_OUT_DIR%\thorvg.lib" (
-    REM meson/ninja may produce .lib directly on MSVC
     copy /y "%_BUILD_DIR%\src\thorvg-1.lib" "%_OUT_DIR%\thorvg.lib" >nul 2>&1
 )
 if not exist "%_OUT_DIR%\thorvg.lib" (
-    echo WARNING: Could not find static library output. Check %_BUILD_DIR%\src\
-    dir "%_BUILD_DIR%\src\*.lib" "%_BUILD_DIR%\src\*.a" 2>nul
+    copy /y "%_BUILD_DIR%\src\libthorvg.a" "%_OUT_DIR%\thorvg.lib" >nul 2>&1
+)
+if not exist "%_OUT_DIR%\thorvg.lib" (
+    copy /y "%_BUILD_DIR%\src\thorvg.lib" "%_OUT_DIR%\thorvg.lib" >nul 2>&1
+)
+if not exist "%_OUT_DIR%\thorvg.lib" (
+    echo FAILED: Could not find static library output in %_BUILD_DIR%\src\
+    exit /b 1
 )
 
 echo ^<^<^< Done: windows_%_ARCH%
