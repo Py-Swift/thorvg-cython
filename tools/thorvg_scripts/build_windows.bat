@@ -3,11 +3,12 @@ setlocal enabledelayedexpansion
 
 REM Build thorvg for Windows (x86_64 and arm64)
 REM Requires: meson, ninja, and a C++ compiler (MSVC via VS Developer Prompt)
-REM Usage:    build_windows.bat [arch]
+REM Usage:    build_windows.bat <thorvg_source_dir> [arch]
 REM           arch = x64 (default), arm64, or all
 
 set ROOT_DIR=%~1
 cd /d "%ROOT_DIR%"
+set ROOT_DIR=%CD%\
 set BUILD_ROOT=%ROOT_DIR%build_windows
 set OUTPUT_DIR=%ROOT_DIR%output
 
@@ -18,7 +19,7 @@ set "PATH=%PATH:C:\Strawberry\perl\bin;=%"
 
 set MESON_COMMON=--vsenv --buildtype=release --default-library=static -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp
 
-set ARCH=%1
+set ARCH=%2
 if "%ARCH%"=="" set ARCH=x64
 
 echo === ThorVG Windows Build ===
