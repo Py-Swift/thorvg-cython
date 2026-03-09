@@ -15,7 +15,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "cibuildwheel", "meson"]
+dev = ["pytest", "cibuildwheel", "meson", "ninja"]
 
 # ---------------------------------------------------------------------------
 #  cibuildwheel configuration
