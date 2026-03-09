@@ -95,6 +95,18 @@ THORVG_CAPI_INCLUDE = os.environ.get(
     str(THORVG_ROOT / "src" / "bindings" / "capi"),
 )
 
+# --- DEBUG: print resolved paths so CI logs show what's happening ----------
+_capi_header = Path(THORVG_CAPI_INCLUDE) / "thorvg_capi.h"
+print(f"[setup.py] HERE              = {HERE}")
+print(f"[setup.py] THORVG_ROOT       = {THORVG_ROOT}  (exists={THORVG_ROOT.exists()})")
+print(f"[setup.py] THORVG_INCLUDE    = {THORVG_INCLUDE}")
+print(f"[setup.py] THORVG_CAPI_INCLUDE = {THORVG_CAPI_INCLUDE}")
+print(f"[setup.py] thorvg_capi.h     = {_capi_header}  (exists={_capi_header.exists()})")
+print(f"[setup.py] THORVG_LIB_DIR    = {THORVG_LIB_DIR}  (exists={Path(THORVG_LIB_DIR).exists()})")
+if THORVG_ROOT.exists():
+    print(f"[setup.py] THORVG_ROOT ls    = {list(THORVG_ROOT.iterdir())}")
+# --- END DEBUG -------------------------------------------------------------
+
 # ---------------------------------------------------------------------------
 #  Platform detection
 # ---------------------------------------------------------------------------

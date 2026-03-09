@@ -47,6 +47,8 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fa
 before-all = """
     python -m pip install meson ninja
     if not exist {project}\\thorvg git clone https://github.com/psychowasp/thorvg.git {project}\\thorvg
+    echo === DEBUG: thorvg tree after clone ===
+    dir {project}\\thorvg\\src\\bindings\\capi\\
     cd /d {project}\\thorvg && build_windows.bat
 """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\output\\windows_x64" }
