@@ -311,8 +311,8 @@ else:
     libraries.append("thorvg")
     extra_link_args.append(f"-Wl,-rpath,{THORVG_LIB_DIR}")
 
-# Append C++ standard library
-if not sys.platform.startswith("win"):
+# Append C++ standard library (macOS/iOS use libc++, Linux links libstdc++ automatically)
+if sys.platform in ("darwin", "ios"):
     extra_link_args.append("-lc++")
 
 # ---------------------------------------------------------------------------
