@@ -44,13 +44,7 @@ before-all = """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fat", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 [tool.cibuildwheel.windows]
-before-all = """
-    python -m pip install meson ninja
-    if not exist {project}\\thorvg git clone https://github.com/psychowasp/thorvg.git {project}\\thorvg
-    echo === DEBUG: thorvg tree after clone ===
-    dir {project}\\thorvg\\src\\bindings\\capi\\
-    cd /d {project}\\thorvg && build_windows.bat
-"""
+before-all = "call {project}\\ci\\prepare_thorvg_windows.bat {project}"
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\output\\windows_x64" }
 
 [tool.cibuildwheel.ios]
