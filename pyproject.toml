@@ -26,12 +26,10 @@ dev = ["pytest", "cibuildwheel", "meson", "ninja"]
 build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
 skip = "pp* *-musllinux_i686"
 environment = { THORVG_ROOT = "thorvg" }
-xbuild-tools = ["meson", "ninja"] # should replace "python -m pip install meson ninja" now.
 
 
 [tool.cibuildwheel.linux]
 before-all = """
-    pip install meson ninja
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_linux.sh
 """
@@ -53,9 +51,7 @@ before-all = """
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_apple.sh
 """
-# repair-wheel-command is not executed on iOS (cross-compilation platform).
-# Use tools/add-ios-frameworks.py as a post-build step instead:
-#   python tools/add-ios-frameworks.py wheelhouse --xcframework thorvg/output/thorvg.xcframework
+xbuild-tools = ["ninja"]
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/ios_arm64" }
 
 [dependency-groups]
