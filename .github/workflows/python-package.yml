@@ -1,4 +1,4 @@
-# Build thorvg-cython on macOS + Windows, run tests
+# Build thorvg-cython on macOS + Windows + Linux, run tests
 # https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: Python package
@@ -28,6 +28,25 @@ jobs:
     - name: Run tests
       run: |
         THORVG_ROOT=thorvg THORVG_LIB_DIR=thorvg/output/macos_fat uv run pytest tests/ -v
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
+
+    - name: Clone and build ThorVG
+      run: |
+        uv tool install meson
+        git clone https://github.com/psychowasp/thorvg.git
+        cd thorvg && bash build_linux.sh
+
+    - name: Run tests
+      run: |
+        THORVG_ROOT=thorvg THORVG_LIB_DIR=thorvg/output/linux_x86_64 uv run pytest tests/ -v
 
   windows:
     runs-on: windows-latest
