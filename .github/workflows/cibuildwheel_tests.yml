@@ -111,7 +111,17 @@ jobs:
         # Override pyproject.toml repair skip — bundle libc++_shared.so so
         # the cibuildwheel testbed emulator can load the extension.
         # (In production the host Gradle app provides libc++_shared.so.)
-        CIBW_REPAIR_WHEEL_COMMAND_ANDROID: ""
+        # Can't use cibuildwheel's default repair (requires API >= 24, Python is built for 21).
+        CIBW_REPAIR_WHEEL_COMMAND_ANDROID: >-
+          bash -c '
+          WHL="{wheel}"; DEST="{dest_dir}"; NDK="$ANDROID_NDK_HOME";
+          case "$WHL" in *x86_64*) ABI=x86_64-linux-android;; *) ABI=aarch64-linux-android;; esac;
+          LIBCPP="$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/$ABI/libc++_shared.so";
+          TMP=$(mktemp -d); python3 -m wheel unpack -d "$TMP" "$WHL";
+          cp "$LIBCPP" "$TMP"/*/thorvg_cython/;
+          python3 -m wheel pack -d "$DEST" "$TMP"/*/;
+          rm -rf "$TMP"
+          '
 
     - uses: actions/upload-artifact@v4
       with:
