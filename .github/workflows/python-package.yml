@@ -28,11 +28,8 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v5
 
-    - name: Clone and build ThorVG
+    - name: Build and test
       run: |
         git clone https://github.com/psychowasp/thorvg.git
-        cd thorvg && bash build_all.sh
-
-    - name: Run tests
-      run: |
+        cd thorvg && bash build_all.sh && cd ..
         THORVG_ROOT=thorvg THORVG_LIB_DIR=thorvg/output/macos_fat uv run pytest tests/ -v
