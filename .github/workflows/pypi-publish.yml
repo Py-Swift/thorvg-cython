@@ -1,10 +1,8 @@
-# This workflow will upload a Python Package to PyPI when a release is created
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
-
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+# Build wheels with cibuildwheel on all platforms, publish to PyPI,
+# and attach as GitHub Release assets.
+#
+# Triggered when a GitHub Release is published.
+# Requires trusted publishing configured on PyPI.
 
 name: Upload Python Package
 
@@ -12,59 +10,171 @@ on:
   release:
     types: [published]
 
-permissions:
-  contents: read
-
 jobs:
-  release-build:
+  build-linux:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
+    - name: Install cibuildwheel
+      run: |
+        uv tool install cibuildwheel
+        sudo apt-get update && sudo apt-get install -y meson ninja-build
 
-      - name: Build release distributions
-        run: |
-          # NOTE: put your own distribution build steps here.
-          python -m pip install build
-          python -m build
+    - name: Build wheels
+      run: cibuildwheel --output-dir wheelhouse
+      env:
+        CIBW_BUILD: "cp313-manylinux_x86_64"
 
-      - name: Upload distributions
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-dists
-          path: dist/
+    - uses: actions/upload-artifact@v4
+      with:
+        name: wheels-linux
+        path: wheelhouse/*.whl
 
-  pypi-publish:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
+
+    - name: Install cibuildwheel
+      run: |
+        uv tool install cibuildwheel
+        brew install meson
+
+    - name: Build wheels
+      run: cibuildwheel --output-dir wheelhouse
+      env:
+        CIBW_BUILD: "cp313-macosx_arm64 cp313-macosx_x86_64 cp313-macosx_universal2"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: wheels-macos
+        path: wheelhouse/*.whl
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
+
+    - name: Install cibuildwheel
+      run: |
+        uv tool install cibuildwheel
+        brew install meson
+        brew install ninja
+
+    - name: Build wheels
+      run: cibuildwheel --platform ios --archs "arm64_iphoneos arm64_iphonesimulator x86_64_iphonesimulator" --output-dir wheelhouse
+      env:
+        CIBW_BUILD: "cp313-ios_*"
+
+    - name: Inject xcframework into iOS wheels
+      run: python tools/add-ios-frameworks.py wheelhouse --xcframework thorvg/output/thorvg.xcframework
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: wheels-ios
+        path: wheelhouse/*.whl
+
+  build-android:
     runs-on: ubuntu-latest
-    needs:
-      - release-build
-    permissions:
-      # IMPORTANT: this permission is mandatory for trusted publishing
-      id-token: write
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
 
-    # Dedicated environments with protections for publishing are strongly recommended.
-    # For more information, see: https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment#deployment-protection-rules
+    - name: Install cibuildwheel
+      run: |
+        uv tool install cibuildwheel
+        sudo apt-get update && sudo apt-get install -y meson ninja-build
+
+    - name: Build wheels
+      run: cibuildwheel --platform android --output-dir wheelhouse
+      env:
+        CIBW_BUILD: "cp313-android_*"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: wheels-android
+        path: wheelhouse/*.whl
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
+
+    - name: Install cibuildwheel
+      run: uv tool install cibuildwheel
+
+    - name: Build wheels
+      run: cibuildwheel --output-dir wheelhouse
+      env:
+        CIBW_BUILD: "cp313-win_amd64"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: wheels-windows
+        path: wheelhouse/*.whl
+
+  build-sdist:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+
+    - name: Build sdist
+      run: pipx run build --sdist
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: sdist
+        path: dist/*.tar.gz
+
+  publish:
+    needs: [build-linux, build-macos, build-ios, build-android, build-windows, build-sdist]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write     # trusted publishing to PyPI
+      contents: write     # attach assets to the GitHub release
+
     environment:
       name: pypi
-      # OPTIONAL: uncomment and update to include your PyPI project URL in the deployment status:
-      # url: https://pypi.org/p/YOURPROJECT
-      #
-      # ALTERNATIVE: if your GitHub Release name is the PyPI project version string
-      # ALTERNATIVE: exactly, uncomment the following line instead:
-      # url: https://pypi.org/project/YOURPROJECT/${{ github.event.release.name }}
 
     steps:
-      - name: Retrieve release distributions
-        uses: actions/download-artifact@v4
-        with:
-          name: release-dists
-          path: dist/
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: dist
+        merge-multiple: true
 
-      - name: Publish release distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages-dir: dist/
+    - name: List collected files
+      run: ls -lh dist/
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: dist/
+
+    - name: Attach wheels to GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: dist/*
