@@ -10,7 +10,6 @@ Platform-aware linking:
 Designed to work with cibuildwheel for automated wheel builds.
 """
 import os
-import shutil
 import sys
 import subprocess
 import sysconfig
@@ -154,26 +153,40 @@ library_dirs = []
 
 if _is_ios_build():
     # -----------------------------------------------------------------------
-    #  iOS: link against the thorvg.xcframework using -framework style.
+    #  iOS: link against the thorvg.xcframework static lib.
     #
     #  The XCFramework has slices like:
     #    thorvg.xcframework/ios-arm64/libthorvg.a
     #    thorvg.xcframework/ios-arm64_x86_64-simulator/libthorvg.a
     #
-    #  We resolve the correct slice and pass it directly.
+    #  Detect simulator vs device using platform.ios_ver() (PEP 730),
+    #  falling back to sysconfig SOABI/MULTIARCH and env vars.
     # -----------------------------------------------------------------------
     arch = _get_arch()
     xcfw = Path(THORVG_XCFRAMEWORK)
 
-    # Find the right slice
-    if "simulator" in _xcode_platform.lower() or "simulator" in _host_platform.lower():
-        # Simulator build
+    # Detect simulator - same approach as Kivy
+    _is_simulator = False
+    try:
+        from platform import ios_ver
+        _is_simulator = ios_ver().is_simulator
+    except (ImportError, AttributeError):
+        pass
+    if not _is_simulator:
+        _soabi = sysconfig.get_config_var("SOABI") or ""
+        _multiarch = sysconfig.get_config_var("MULTIARCH") or ""
+        if "simulator" in _soabi or "simulator" in _multiarch:
+            _is_simulator = True
+    if not _is_simulator:
+        if "simulator" in _xcode_platform.lower() or "simulator" in _host_platform.lower():
+            _is_simulator = True
+
+    if _is_simulator:
         candidates = [
             xcfw / "ios-arm64_x86_64-simulator",
             xcfw / f"ios-{arch}-simulator",
         ]
     else:
-        # Device build
         candidates = [
             xcfw / "ios-arm64",
             xcfw / f"ios-{arch}",
@@ -295,42 +308,6 @@ extensions = cythonize(
 )
 
 # ---------------------------------------------------------------------------
-#  iOS: stage thorvg.xcframework into src/.framework/ for wheel bundling
-#
-#  After pip install the layout is:
-#    site-packages/.framework/thorvg.xcframework/...
-#    site-packages/thorvg_cython/...
-#
-#  PSProject / Kivy convention: any .framework directory at site-packages
-#  level is picked up by the host project at post-install.
-# ---------------------------------------------------------------------------
-_packages = find_packages(where="src")
-_package_dir = {"": "src"}
-_package_data = {}
-
-if _is_ios_build():
-    _fw_staging = HERE / "src" / ".framework"
-    _fw_staging.mkdir(exist_ok=True)
-    (_fw_staging / "__init__.py").touch()
-
-    _xcfw_src = Path(THORVG_XCFRAMEWORK)
-    _xcfw_dest = _fw_staging / "thorvg.xcframework"
-
-    if _xcfw_src.exists() and not _xcfw_dest.exists():
-        shutil.copytree(_xcfw_src, _xcfw_dest)
-
-    if _xcfw_dest.exists():
-        _packages.append(".framework")
-        # Collect every file in the xcframework tree for package_data
-        _fw_files = []
-        for _root, _dirs, _files in os.walk(str(_xcfw_dest)):
-            for _f in _files:
-                _fw_files.append(
-                    os.path.relpath(os.path.join(_root, _f), str(_fw_staging))
-                )
-        _package_data[".framework"] = _fw_files
-
-# ---------------------------------------------------------------------------
 #  Setup
 # ---------------------------------------------------------------------------
 setup(
@@ -343,9 +320,9 @@ setup(
     author="ThorVG",
     license="MIT",
     url="https://github.com/thorvg/thorvg",
-    packages=_packages,
-    package_dir=_package_dir,
-    package_data=_package_data,
+    packages=find_packages(where="src"),
+    package_dir={"": "src"},
+    exclude_package_data={"": ["*.cpp"]},
     ext_modules=extensions,
     python_requires=">=3.9",
     zip_safe=False,

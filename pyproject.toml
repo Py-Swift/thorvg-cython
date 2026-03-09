@@ -61,4 +61,7 @@ before-all = """
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_all.sh
 """
+# repair-wheel-command is not executed on iOS (cross-compilation platform).
+# Use tools/add-ios-frameworks.py as a post-build step instead:
+#   python tools/add-ios-frameworks.py wheelhouse --xcframework thorvg/output/thorvg.xcframework
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/ios_arm64" }

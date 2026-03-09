@@ -62,11 +62,115 @@ cibuildwheel --platform macos
 import thorvg_cython as tvg
 
 with tvg.Engine(threads=2) as engine:
-    canvas = tvg.SwCanvas()
+    canvas = tvg.SwCanvas(800, 600)
     shape = tvg.Shape()
     shape.append_rect(0, 0, 100, 100, rx=10, ry=10)
     shape.set_fill_color(255, 0, 0)
     canvas.add(shape)
+    canvas.draw()
+    canvas.sync()
+```
+
+### Zero-Copy Buffer Protocol (PEP 3118)
+
+`SwCanvas` implements the Python buffer protocol directly — no intermediate
+copies needed when passing pixel data to other frameworks.
+
+**Snapshot as `bytes`:**
+
+```python
+import thorvg_cython as tvg
+
+with tvg.Engine(threads=2):
+    canvas = tvg.SwCanvas(800, 600)
+
+    # Draw a red rounded rectangle
+    shape = tvg.Shape()
+    shape.append_rect(50, 50, 200, 150, rx=20, ry=20)
+    shape.set_fill_color(255, 0, 0)
+    canvas.add(shape)
+
+    # Load and render an SVG
+    pic = tvg.Picture()
+    pic.load("icon.svg")
+    pic.set_size(100, 100)
+    canvas.add(pic)
+
+    canvas.draw()
+    canvas.sync()
+
+    raw = bytes(canvas)  # flat RGBA, 800×600×4 = 1_920_000 bytes
+```
+
+**Kivy texture (zero-copy blit):**
+
+```python
+from kivy.graphics.texture import Texture
+import thorvg_cython as tvg
+
+with tvg.Engine():
+    texture = Texture.create(size=(800, 600), colorfmt='rgba')
+    canvas = tvg.SwCanvas(800, 600)
+
+    # Load a Lottie animation
+    pic = tvg.Picture()
+    pic.load("animation.json")
+    pic.set_size(800, 600)
+    canvas.add(pic)
+
+    # Initial render
+    canvas.draw()
+    canvas.sync()
+    texture.blit_buffer(canvas, colorfmt='rgba', bufferfmt='ubyte')
+
+    # Move the animation and re-render — same canvas, same texture
+    pic.translate(100, 50)
+    pic.set_opacity(180)
+    canvas.update()
+    canvas.draw()
+    canvas.sync()
+    texture.blit_buffer(canvas, colorfmt='rgba', bufferfmt='ubyte')
+```
+
+**NumPy array (zero-copy view):**
+
+```python
+import numpy as np
+import thorvg_cython as tvg
+
+with tvg.Engine():
+    canvas = tvg.SwCanvas(400, 300)
+
+    shape = tvg.Shape()
+    shape.append_circle(200, 150, 100, 100)
+    shape.set_fill_color(0, 120, 255)
+    canvas.add(shape)
+    canvas.draw()
+    canvas.sync()
+
+    # Live view into the canvas pixel buffer — no copy
+    arr = np.frombuffer(canvas, dtype=np.uint8).reshape(300, 400, 4)
+    arr[:, :, 3] = 128  # set alpha to 50% — modifies canvas directly
+```
+
+**`memoryview` (stdlib, zero-copy):**
+
+```python
+import thorvg_cython as tvg
+
+with tvg.Engine():
+    canvas = tvg.SwCanvas(256, 256)
+
+    shape = tvg.Shape()
+    shape.append_rect(0, 0, 256, 256)
+    shape.set_fill_color(0, 0, 0)
+    canvas.add(shape)
+    canvas.draw()
+    canvas.sync()
+
+    mv = memoryview(canvas)
+    print(len(mv))  # 262_144
+    mv[0:4]          # first pixel RGBA bytes
 ```
 
 ## License
