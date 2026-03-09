@@ -30,7 +30,7 @@ jobs:
 
     - name: Build and test
       run: |
-        uv sync
+        uv tool install meson
         git clone https://github.com/psychowasp/thorvg.git
         cd thorvg && bash build_all.sh && cd ..
         THORVG_ROOT=thorvg THORVG_LIB_DIR=thorvg/output/macos_fat uv run pytest tests/ -v
