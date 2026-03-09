@@ -21,10 +21,8 @@ jobs:
         python-version: "3.13"
     - uses: astral-sh/setup-uv@v5
 
-    - name: Install cibuildwheel + meson
-      run: |
-        uv tool install cibuildwheel
-        uv tool install meson
+    - name: Install cibuildwheel
+      run: uv tool install cibuildwheel
 
     - name: Build wheels
       run: cibuildwheel --output-dir wheelhouse
@@ -45,10 +43,8 @@ jobs:
         python-version: "3.13"
     - uses: astral-sh/setup-uv@v5
 
-    - name: Install cibuildwheel + meson
-      run: |
-        uv tool install cibuildwheel
-        uv tool install meson
+    - name: Install cibuildwheel
+      run: uv tool install cibuildwheel
 
     - name: Build wheels
       run: cibuildwheel --output-dir wheelhouse
@@ -69,10 +65,8 @@ jobs:
         python-version: "3.13"
     - uses: astral-sh/setup-uv@v5
 
-    - name: Install cibuildwheel + meson
-      run: |
-        uv tool install cibuildwheel
-        uv tool install meson
+    - name: Install cibuildwheel
+      run: uv tool install cibuildwheel
 
     - name: Build wheels
       run: cibuildwheel --output-dir wheelhouse
