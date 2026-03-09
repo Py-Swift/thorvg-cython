@@ -108,6 +108,10 @@ jobs:
       run: cibuildwheel --platform android --output-dir wheelhouse
       env:
         CIBW_BUILD: "cp313-android_*"
+        # Override pyproject.toml repair skip — bundle libc++_shared.so so
+        # the cibuildwheel testbed emulator can load the extension.
+        # (In production the host Gradle app provides libc++_shared.so.)
+        CIBW_REPAIR_WHEEL_COMMAND_ANDROID: ""
 
     - uses: actions/upload-artifact@v4
       with:
