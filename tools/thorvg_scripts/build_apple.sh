@@ -6,7 +6,8 @@ set -euo pipefail
 #
 # Usage:  bash build_apple.sh <thorvg_source_dir>
 
-ROOT_DIR="$(cd "$1" && pwd)"
+ROOT_DIR=$1
+cd "$ROOT_DIR"
 BUILD_ROOT="$ROOT_DIR/build_multiplatform"
 OUTPUT_DIR="$ROOT_DIR/output"
 MESON_COMMON="--buildtype=release --default-library=static -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp"

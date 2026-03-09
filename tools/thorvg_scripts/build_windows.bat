@@ -6,8 +6,8 @@ REM Requires: meson, ninja, and a C++ compiler (MSVC via VS Developer Prompt)
 REM Usage:    build_windows.bat [arch]
 REM           arch = x64 (default), arm64, or all
 
-cd /d "%~1"
-set ROOT_DIR=%CD%\
+set ROOT_DIR=%~1
+cd /d "%ROOT_DIR%"
 set BUILD_ROOT=%ROOT_DIR%build_windows
 set OUTPUT_DIR=%ROOT_DIR%output
 
