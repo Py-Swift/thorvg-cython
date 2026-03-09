@@ -37,6 +37,7 @@ jobs:
 
     - name: Clone and build ThorVG
       run: |
+        uv tool install meson
         git clone https://github.com/psychowasp/thorvg.git
         cd thorvg && ${{ matrix.thorvg-build }}
 
