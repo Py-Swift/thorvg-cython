@@ -51,6 +51,10 @@ if sys.platform in ("darwin", "ios") and "SDKROOT" not in os.environ:
 # ---------------------------------------------------------------------------
 HERE = Path(__file__).resolve().parent
 THORVG_ROOT = Path(os.environ.get("THORVG_ROOT", HERE / "thorvg"))
+# Ensure THORVG_ROOT is absolute so include / lib paths survive cwd changes
+# (e.g. when python -m build invokes the compiler from a temp directory).
+if not THORVG_ROOT.is_absolute():
+    THORVG_ROOT = (HERE / THORVG_ROOT).resolve()
 
 # Where the C API header lives (thorvg_capi.h)
 THORVG_INCLUDE = os.environ.get(
@@ -62,7 +66,10 @@ THORVG_INCLUDE = os.environ.get(
 def _resolve_lib_dir() -> str:
     env_val = os.environ.get("THORVG_LIB_DIR")
     if env_val:
-        return env_val
+        p = Path(env_val)
+        if not p.is_absolute():
+            p = (HERE / p).resolve()
+        return str(p)
     # Prefer builddir_capi (built with -Dbindings=capi)
     for candidate in [
         THORVG_ROOT / "builddir_capi" / "src",
