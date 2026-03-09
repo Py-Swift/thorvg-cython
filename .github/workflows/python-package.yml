@@ -42,7 +42,7 @@ jobs:
       run: |
         uv tool install meson
         git clone https://github.com/psychowasp/thorvg.git
-        cd thorvg && build_windows.bat
+        cd thorvg; .\build_windows.bat
 
     - name: Run tests
       run: |
