@@ -1,0 +1,40 @@
+#!/bin/bash
+set -euo pipefail
+
+# Build thorvg for Linux (native architecture)
+# Produces a static library at output/linux_<arch>/libthorvg.a
+#
+# Usage:  bash build_linux.sh <thorvg_source_dir>
+
+ROOT_DIR="$(cd "$1" && pwd)"
+BUILD_ROOT="$ROOT_DIR/build_linux"
+OUTPUT_DIR="$ROOT_DIR/output"
+MESON_COMMON="--buildtype=release --default-library=static -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp"
+
+ARCH="$(uname -m)"
+
+echo "=== ThorVG Linux Build ==="
+echo "Root: $ROOT_DIR"
+echo "Arch: $ARCH"
+echo ""
+
+rm -rf "$BUILD_ROOT"
+mkdir -p "$OUTPUT_DIR"
+
+BUILD_DIR="$BUILD_ROOT/$ARCH"
+OUT_DIR="$OUTPUT_DIR/linux_$ARCH"
+
+
+
+echo ">>> Building: linux_$ARCH"
+$(which meson) setup "$BUILD_DIR" $MESON_COMMON 2>&1 | tail -5
+$(which ninja) -C "$BUILD_DIR" 2>&1
+echo "<<< Done: linux_$ARCH"
+echo ""
+
+# Copy output
+mkdir -p "$OUT_DIR"
+cp "$BUILD_DIR/src/libthorvg-1.a" "$OUT_DIR/libthorvg.a"
+
+echo "=== Build Complete ==="
+echo "Static library: $OUT_DIR/libthorvg.a"
