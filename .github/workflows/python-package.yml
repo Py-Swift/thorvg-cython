@@ -1,4 +1,4 @@
-# Build thorvg-cython on macOS, run tests
+# Build thorvg-cython on macOS + Windows, run tests
 # https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: Python package
@@ -11,26 +11,43 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13"]
+        include:
+          - os: macos-latest
+            thorvg-build: bash build_all.sh
+            thorvg-lib-dir: thorvg/output/macos_fat
+          - os: windows-latest
+            thorvg-build: build_windows.bat
+            thorvg-lib-dir: thorvg\output\windows_x64
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python 3.13
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: "3.13"
 
     - name: Install uv
       uses: astral-sh/setup-uv@v5
 
-    - name: Build and test
+    - name: Clone and build ThorVG
       run: |
-        uv tool install meson
         git clone https://github.com/psychowasp/thorvg.git
-        cd thorvg && bash build_all.sh && cd ..
-        THORVG_ROOT=thorvg THORVG_LIB_DIR=thorvg/output/macos_fat uv run pytest tests/ -v
+        cd thorvg && ${{ matrix.thorvg-build }}
+
+    - name: Run tests (macOS)
+      if: runner.os != 'Windows'
+      run: |
+        THORVG_ROOT=thorvg THORVG_LIB_DIR=${{ matrix.thorvg-lib-dir }} uv run pytest tests/ -v
+
+    - name: Run tests (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        $env:THORVG_ROOT="thorvg"
+        $env:THORVG_LIB_DIR="${{ matrix.thorvg-lib-dir }}"
+        uv run pytest tests/ -v
