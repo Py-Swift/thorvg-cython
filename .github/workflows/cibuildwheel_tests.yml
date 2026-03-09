@@ -124,9 +124,7 @@ jobs:
     - uses: astral-sh/setup-uv@v5
 
     - name: Install cibuildwheel
-      run: |
-        uv tool install cibuildwheel
-        
+      run: uv tool install cibuildwheel
 
     - name: Build wheels
       run: cibuildwheel --output-dir wheelhouse
