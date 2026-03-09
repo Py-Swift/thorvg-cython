@@ -4,12 +4,14 @@
 # Triggered manually or on tagged releases.
 # Wheels are uploaded as artifacts (not published to PyPI).
 
-name: cibuildwheel
+name: cibuildwheel tests
 
 on:
   workflow_dispatch:
   push:
-    tags: [ "v*" ]
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
 
 jobs:
   build-linux:
