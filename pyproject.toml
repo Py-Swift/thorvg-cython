@@ -30,22 +30,22 @@ environment = { THORVG_ROOT = "thorvg" }
 
 [tool.cibuildwheel.linux]
 before-all = """
-    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git ./thorvg
-    bash ./tools/thorvg_scripts/build_linux.sh ./thorvg
+    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
+    bash {project}/tools/thorvg_scripts/build_linux.sh {project}/thorvg
 """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/linux_x86_64" }
 
 [tool.cibuildwheel.macos]
 before-all = """
-    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git ./thorvg
-    bash ./tools/thorvg_scripts/build_apple.sh ./thorvg
+    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
+    bash {project}/tools/thorvg_scripts/build_apple.sh {project}/thorvg
 """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fat", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 [tool.cibuildwheel.windows]
 before-all = """
-    if not exist {project}\\thorvg git clone https://github.com/psychowasp/thorvg.git .\\thorvg
-    call .\\tools\\thorvg_scripts\\build_windows.bat .\\thorvg
+    if not exist {project}\\thorvg git clone https://github.com/psychowasp/thorvg.git {project}\\thorvg
+    call {project}\\tools\\thorvg_scripts\\build_windows.bat {project}\\thorvg
 """
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg\\output\\windows_x64" }
 
