@@ -50,6 +50,7 @@ jobs:
     - name: Install cibuildwheel
       run: |
         uv tool install cibuildwheel
+        brew install ninja
         
     - name: Build wheels
       run: cibuildwheel --output-dir wheelhouse
