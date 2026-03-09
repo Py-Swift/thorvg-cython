@@ -54,7 +54,7 @@ before-all = """
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git ./thorvg
     bash ./tools/thorvg_scripts/build_apple.sh ./thorvg
 """
-xbuild-tools = ["ninja"]
+xbuild-tools = []
 environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/ios_arm64" }
 
 [dependency-groups]

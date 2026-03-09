@@ -75,6 +75,7 @@ jobs:
       run: |
         uv tool install cibuildwheel
         brew install meson
+        brew install ninja
 
     - name: Build wheels
       run: cibuildwheel --platform ios --archs "arm64_iphoneos arm64_iphonesimulator x86_64_iphonesimulator" --output-dir wheelhouse
