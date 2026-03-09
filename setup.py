@@ -328,12 +328,14 @@ elif _is_android_build():
     #  Android: link against static libthorvg.a
     #
     #  THORVG_LIB_DIR is the base output dir (e.g. thorvg/output).
-    #  Detect the target arch from _PYTHON_HOST_PLATFORM
-    #  (e.g. android-21-arm64_v8a or android-21-x86_64, per PEP 738)
-    #  and append the correct subdir (android_aarch64 or android_x86_64).
+    #  Detect the target arch from _PYTHON_HOST_PLATFORM (set by the build
+    #  frontend / cibuildwheel when cross-compiling) or fall back to
+    #  sysconfig.get_platform(), which returns the target platform string
+    #  (e.g. "android-21-x86_64") when running with the Android Python
+    #  interpreter (e.g. in local development without _PYTHON_HOST_PLATFORM).
     # -----------------------------------------------------------------------
     _android_arch = "aarch64"  # default
-    _host_plat = os.environ.get("_PYTHON_HOST_PLATFORM", "")
+    _host_plat = os.environ.get("_PYTHON_HOST_PLATFORM", "") or sysconfig.get_platform()
     if "x86_64" in _host_plat:
         _android_arch = "x86_64"
     elif "aarch64" in _host_plat or "arm64" in _host_plat:
@@ -347,7 +349,7 @@ elif _is_android_build():
     _android_static = _lib_dir / "libthorvg.a"
     _android_static_1 = _lib_dir / "libthorvg-1.a"
 
-    print(f"[setup.py] Android arch={_android_arch}, lib_dir={_lib_dir}")
+    print(f"[setup.py] Android arch={_android_arch}, _host_plat={_host_plat!r}, lib_dir={_lib_dir}")
 
     if _android_static.exists():
         extra_link_args.append(str(_android_static))

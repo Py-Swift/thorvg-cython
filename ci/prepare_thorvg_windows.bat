@@ -48,12 +48,7 @@ echo Found thorvg_capi.h
 
 REM 4. Build thorvg
 echo Building thorvg ...
-cd /d "%THORVG_DIR%"
-if errorlevel 1 (
-    echo FAILED: cd to %THORVG_DIR%
-    exit /b 1
-)
-call build_windows.bat
+call "%PROJECT%\tools\thorvg_scripts\build_windows.bat" "%THORVG_DIR%"
 if errorlevel 1 (
     echo FAILED: build_windows.bat
     exit /b 1
