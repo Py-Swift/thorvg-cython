@@ -31,6 +31,7 @@ xbuild-tools = ["meson", "ninja"] # should replace "python -m pip install meson 
 
 [tool.cibuildwheel.linux]
 before-all = """
+    pip install meson ninja
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     cd {project}/thorvg && bash build_linux.sh
 """

@@ -50,8 +50,7 @@ jobs:
     - name: Install cibuildwheel
       run: |
         uv tool install cibuildwheel
-        python3.13 -m pip install meson ninja
-
+        
     - name: Build wheels
       run: cibuildwheel --output-dir wheelhouse
       env:
@@ -99,7 +98,7 @@ jobs:
     - name: Install cibuildwheel
       run: |
         uv tool install cibuildwheel
-        python3.13 -m pip install meson ninja
+        
 
     - name: Build wheels
       run: cibuildwheel --output-dir wheelhouse
