@@ -8,6 +8,7 @@ set -euo pipefail
 
 ROOT_DIR=$1
 cd "$ROOT_DIR"
+ROOT_DIR="$(pwd)"
 BUILD_ROOT="$ROOT_DIR/build_multiplatform"
 OUTPUT_DIR="$ROOT_DIR/output"
 MESON_COMMON="--buildtype=release --default-library=static -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp"
