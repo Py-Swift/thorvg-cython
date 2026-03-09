@@ -294,7 +294,7 @@ elif sys.platform.startswith("win"):
         library_dirs.append(THORVG_LIB_DIR)
         libraries.append("thorvg")
 
-    extra_compile_args = ["/std:c++17", "/EHsc"]
+    extra_compile_args = ["/std:c++17", "/EHsc", "/DTVG_STATIC"]
 
 elif sys.platform == "android":
     # -----------------------------------------------------------------------
