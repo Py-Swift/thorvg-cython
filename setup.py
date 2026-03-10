@@ -194,7 +194,11 @@ extra_compile_args = ["-std=c++17"]
 extra_link_args = []
 libraries = []
 library_dirs = []
-
+# Thorvg static library link args — only the MAIN extension (thorvg.pyx)
+# should link against the static libthorvg.  Sub-extensions (sw_canvas,
+# gl_canvas) resolve thorvg C symbols at runtime from the already-loaded
+# main extension via RTLD_GLOBAL (see __init__.py).
+_thorvg_static_link_args = []
 if _is_ios_build():
     # -----------------------------------------------------------------------
     #  iOS: link against the thorvg.xcframework static lib.
@@ -244,7 +248,7 @@ if _is_ios_build():
             break
 
     if lib_path:
-        extra_link_args.extend([lib_path])
+        _thorvg_static_link_args.append(lib_path)
     else:
         # Fallback: let the linker search
         library_dirs.append(str(xcfw))
@@ -282,11 +286,11 @@ elif _is_macos_build():
     local_dylib = Path(THORVG_LIB_DIR) / "libthorvg-1.dylib"
 
     if local_static_1.exists():
-        extra_link_args.append(str(local_static_1))
+        _thorvg_static_link_args.append(str(local_static_1))
     elif local_static.exists():
-        extra_link_args.append(str(local_static))
+        _thorvg_static_link_args.append(str(local_static))
     elif macos_static.exists():
-        extra_link_args.append(str(macos_static))
+        _thorvg_static_link_args.append(str(macos_static))
     elif local_dylib.exists():
         library_dirs.append(THORVG_LIB_DIR)
         libraries.append("thorvg-1")
@@ -384,9 +388,9 @@ elif _is_android_build():
     print(f"[setup.py] Android arch={_android_arch}, _host_plat={_host_plat!r}, lib_dir={_lib_dir}")
 
     if _android_static.exists():
-        extra_link_args.append(str(_android_static))
+        _thorvg_static_link_args.append(str(_android_static))
     elif _android_static_1.exists():
-        extra_link_args.append(str(_android_static_1))
+        _thorvg_static_link_args.append(str(_android_static_1))
     else:
         library_dirs.append(str(_lib_dir))
         libraries.append("thorvg")
@@ -405,9 +409,9 @@ else:
     _linux_static_1 = _lib_dir / "libthorvg-1.a"
 
     if _linux_static.exists():
-        extra_link_args.append(str(_linux_static))
+        _thorvg_static_link_args.append(str(_linux_static))
     elif _linux_static_1.exists():
-        extra_link_args.append(str(_linux_static_1))
+        _thorvg_static_link_args.append(str(_linux_static_1))
     else:
         library_dirs.append(THORVG_LIB_DIR)
         libraries.append("thorvg")
@@ -421,13 +425,43 @@ if sys.platform in ("darwin", "ios"):
 #  Extension definition
 # ---------------------------------------------------------------------------
 
-# Common kwargs shared by all Cython extensions
-_ext_kwargs = dict(
+# ---------------------------------------------------------------------------
+#  Extension kwargs: main vs sub-extensions
+#
+#  When libthorvg is statically linked, only the MAIN extension (thorvg.pyx)
+#  carries the library.  Sub-extensions (sw_canvas, gl_canvas) resolve thorvg
+#  C symbols at runtime from the already-loaded main extension.  This avoids
+#  each .so having a private copy of libthorvg with separate global state
+#  (e.g. the engineInit counter), which would cause tvg_swcanvas_create() to
+#  return NULL even after tvg_engine_init() has been called.
+#
+#  __init__.py sets RTLD_GLOBAL before importing thorvg.so so that its
+#  symbols are globally visible to subsequent dlopen() calls.
+# ---------------------------------------------------------------------------
+
+# Main extension: links against libthorvg (static or shared)
+_main_ext_kwargs = dict(
     include_dirs=include_dirs,
     library_dirs=library_dirs,
     libraries=libraries,
     extra_compile_args=extra_compile_args,
-    extra_link_args=extra_link_args,
+    extra_link_args=extra_link_args + _thorvg_static_link_args,
+    language="c++",
+)
+
+# Sub-extensions: do NOT link libthorvg; resolve C symbols at runtime.
+_sub_extra_link = list(extra_link_args)  # copy base link args (c++ stdlib, rpath, etc.)
+if sys.platform in ("darwin", "ios") or _is_ios_build():
+    # macOS / iOS linker requires explicit opt-in for unresolved symbols
+    _sub_extra_link.extend(["-undefined", "dynamic_lookup"])
+# Linux / Android: shared objects allow unresolved symbols by default
+
+_sub_ext_kwargs = dict(
+    include_dirs=include_dirs,
+    library_dirs=library_dirs,
+    libraries=libraries,
+    extra_compile_args=extra_compile_args,
+    extra_link_args=_sub_extra_link,
     language="c++",
 )
 
@@ -435,12 +469,12 @@ _ext_modules = [
     Extension(
         name="thorvg_cython.thorvg",
         sources=["src/thorvg_cython/thorvg.pyx"],
-        **_ext_kwargs,
+        **_main_ext_kwargs,
     ),
     Extension(
         name="thorvg_cython.sw_canvas",
         sources=["src/thorvg_cython/sw_canvas.pyx"],
-        **_ext_kwargs,
+        **_sub_ext_kwargs,
     ),
 ]
 
@@ -451,7 +485,7 @@ if GPU_MODE:
         Extension(
             name="thorvg_cython.gl_canvas",
             sources=["src/thorvg_cython/gl_canvas.pyx"],
-            **_ext_kwargs,
+            **_sub_ext_kwargs,
         ),
     )
     print(f"[setup.py] GPU_MODE enabled (THORVG_GPU={THORVG_GPU!r}) — compiling real GlCanvas")

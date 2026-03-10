@@ -89,3 +89,17 @@ cdef class Saver:
 # ── Accessor ─────────────────────────────────────────────────────
 cdef class Accessor:
     cdef tvg.Tvg_Accessor _acc
+
+
+# ── Canvas-creation helpers (called by sub-extensions via cimport) ─
+# These thin wrappers keep all C-API symbol references inside thorvg.so,
+# so sw_canvas.so / gl_canvas.so never need to link libthorvg directly.
+cdef tvg.Tvg_Canvas _create_sw_canvas(int op)
+cdef tvg.Tvg_Result _set_sw_target(tvg.Tvg_Canvas c, uint32_t* buf,
+                                    uint32_t stride, uint32_t w, uint32_t h,
+                                    int cs)
+cdef tvg.Tvg_Canvas _create_gl_canvas(int op)
+cdef tvg.Tvg_Result _set_gl_target(tvg.Tvg_Canvas c, void* display,
+                                    void* surface, void* context,
+                                    int32_t fbo_id, uint32_t w, uint32_t h,
+                                    int cs)

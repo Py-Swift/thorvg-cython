@@ -4,8 +4,8 @@ SwCanvas — software-rasterized canvas with built-in pixel buffer.
 """
 from libc.stdint cimport uint8_t, uint32_t
 
-cimport thorvg_cython.cthorvg as tvg
-from thorvg_cython.thorvg cimport Canvas, PixelBuffer
+from thorvg_cython.thorvg cimport (Canvas, PixelBuffer,
+                                    _create_sw_canvas, _set_sw_target)
 from thorvg_cython.thorvg import Result, Colorspace
 
 
@@ -25,23 +25,21 @@ cdef class SwCanvas(Canvas):
 
     def __cinit__(self, uint32_t w=0, uint32_t h=0, int cs=0,
                   int engine_option=1):
-        self._c = tvg.tvg_swcanvas_create(<tvg.Tvg_Engine_Option>engine_option)
+        self._c = _create_sw_canvas(engine_option)
         self._buf = None
         if w > 0 and h > 0:
             self._buf = PixelBuffer(w, h, cs)
-            tvg.tvg_swcanvas_set_target(
+            _set_sw_target(
                 self._c, self._buf._data, self._buf._stride,
-                self._buf._w, self._buf._h,
-                <tvg.Tvg_Colorspace>self._buf._cs)
+                self._buf._w, self._buf._h, self._buf._cs)
 
     def resize(self, uint32_t w, uint32_t h, int cs=-1):
         """Resize the internal pixel buffer (reallocates)."""
         cdef int actual_cs = cs if cs >= 0 else (self._buf._cs if self._buf is not None else 0)
         self._buf = PixelBuffer(w, h, actual_cs)
-        return Result(tvg.tvg_swcanvas_set_target(
+        return Result(_set_sw_target(
             self._c, self._buf._data, self._buf._stride,
-            self._buf._w, self._buf._h,
-            <tvg.Tvg_Colorspace>self._buf._cs))
+            self._buf._w, self._buf._h, self._buf._cs))
 
     # ---- buffer protocol (delegates to internal PixelBuffer) ----
 

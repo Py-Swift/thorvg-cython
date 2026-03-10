@@ -13,8 +13,8 @@ draw calls on the same GL context / FBO.
 """
 from libc.stdint cimport uint8_t, uint32_t, int32_t, uintptr_t
 
-cimport thorvg_cython.cthorvg as tvg
-from thorvg_cython.thorvg cimport Canvas
+from thorvg_cython.thorvg cimport (Canvas,
+                                    _create_gl_canvas, _set_gl_target)
 from thorvg_cython.thorvg import Result
 
 
@@ -47,7 +47,7 @@ cdef class GlCanvas(Canvas):
     """
 
     def __cinit__(self, int engine_option=1):
-        self._c = tvg.tvg_glcanvas_create(<tvg.Tvg_Engine_Option>engine_option)
+        self._c = _create_gl_canvas(engine_option)
 
     def target(self, uintptr_t display, uintptr_t surface,
                uintptr_t context, int32_t fbo_id,
@@ -63,13 +63,12 @@ cdef class GlCanvas(Canvas):
             h:        Render target height in pixels.
             cs:       Colorspace (default: ABGR8888).
         """
-        return Result(tvg.tvg_glcanvas_set_target(
+        return Result(_set_gl_target(
             self._c,
             <void*>display,
             <void*>surface,
             <void*>context,
-            fbo_id, w, h,
-            <tvg.Tvg_Colorspace>cs))
+            fbo_id, w, h, cs))
 
     def __repr__(self):
         return "GlCanvas()"
