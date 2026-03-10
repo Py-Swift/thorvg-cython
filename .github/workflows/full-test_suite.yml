@@ -24,6 +24,11 @@ jobs:
         uv tool install cibuildwheel
         sudo apt-get update && sudo apt-get install -y meson ninja-build
 
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
+
     - name: Build wheels
       run: cibuildwheel --platform linux --archs "x86_64 aarch64" --output-dir wheelhouse
 
