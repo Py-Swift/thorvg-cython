@@ -58,7 +58,9 @@ before-all = "python {project}/tools/build_thorvg.py android --thorvg-root={proj
 # repair-wheel-command = "cp {wheel} {dest_dir}/"
 environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output", ANDROID_API_LEVEL = "24" }
 test-sources = ["tests"]
-test-command = "python -m pytest ./tests -v"
+# Set LD_LIBRARY_PATH to the installed package dir so the Android linker
+# can find libthorvg-1.so (Android classloader namespace blocks $ORIGIN rpath).
+test-command = "python -c \"import os,sys,importlib.util as u;d=(u.find_spec('thorvg_cython').submodule_search_locations or [''])[0];os.environ['LD_LIBRARY_PATH']=d+':'+os.environ.get('LD_LIBRARY_PATH','');sys.exit(__import__('pytest').main(['./tests','-v']))\""
 
 [dependency-groups]
 dev = [
