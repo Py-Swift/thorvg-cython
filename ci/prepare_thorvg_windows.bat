@@ -56,9 +56,9 @@ echo Found thorvg_capi.h
 
 REM 4. Build thorvg
 echo Building thorvg ...
-call "%PROJECT%\tools\thorvg_scripts\build_windows.bat" "%THORVG_DIR%"
+python "%PROJECT%\tools\build_thorvg.py" windows --thorvg-root="%THORVG_DIR%"
 if errorlevel 1 (
-    echo FAILED: build_windows.bat
+    echo FAILED: build_thorvg.py windows
     exit /b 1
 )
 

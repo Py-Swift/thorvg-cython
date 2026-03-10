@@ -26,7 +26,7 @@ jobs:
         uv tool install meson
         curl -sL https://github.com/thorvg/thorvg/archive/refs/tags/v${THORVG_VERSION}.tar.gz | tar xz
         mv thorvg-${THORVG_VERSION} thorvg
-        bash tools/thorvg_scripts/build_macos.sh thorvg
+        python tools/build_thorvg.py macos --thorvg-root=thorvg
 
     - name: Run tests
       run: |
@@ -48,7 +48,7 @@ jobs:
         uv tool install meson
         curl -sL https://github.com/thorvg/thorvg/archive/refs/tags/v${THORVG_VERSION}.tar.gz | tar xz
         mv thorvg-${THORVG_VERSION} thorvg
-        bash tools/thorvg_scripts/build_linux.sh thorvg
+        python tools/build_thorvg.py linux --thorvg-root=thorvg
 
     - name: Run tests
       run: |
@@ -71,9 +71,7 @@ jobs:
         uv tool install meson
         curl -sL https://github.com/thorvg/thorvg/archive/refs/tags/v${THORVG_VERSION}.tar.gz | tar xz
         mv thorvg-${THORVG_VERSION} thorvg
-    - name: Build ThorVG
-      run: |
-        call tools\thorvg_scripts\build_windows.bat thorvg
+        python tools/build_thorvg.py windows --thorvg-root=thorvg
 
     - name: Run tests
       run: |
