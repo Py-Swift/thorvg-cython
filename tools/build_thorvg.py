@@ -119,7 +119,8 @@ def _download_thorvg_source(version: str, dest: Path) -> None:
     with tarfile.open(fileobj=resp, mode="r|gz") as tf:
         for member in tf:
             # Guard against path traversal
-            if member.name.startswith("/") or ".." in member.name.split("/"):
+            resolved = (parent / member.name).resolve()
+            if not str(resolved).startswith(str(parent.resolve())):
                 raise RuntimeError(f"Unsafe tar member: {member.name}")
             tf.extract(member, path=str(parent))
 

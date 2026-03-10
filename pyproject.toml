@@ -49,7 +49,7 @@ before-all = "python {project}/tools/build_thorvg.py ios --thorvg-root={project}
 xbuild-tools = ["ninja"]
 environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output/ios_arm64", ANGLE_XCFRAMEWORK_DIR = "thorvg/output/angle" }
 test-sources = ["tests"]
-test-command = ""
+test-command = ""  # disabled: iOS tests require host app with embedded xcframework
 
 [tool.cibuildwheel.android]
 before-all = "python {project}/tools/build_thorvg.py android --thorvg-root={project}/thorvg --version=$THORVG_VERSION"
@@ -58,7 +58,7 @@ before-all = "python {project}/tools/build_thorvg.py android --thorvg-root={proj
 # repair-wheel-command = "cp {wheel} {dest_dir}/"
 environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output", ANDROID_API_LEVEL = "24" }
 test-sources = ["tests"]
-test-command = ""
+test-command = ""  # disabled: Android classloader namespace prevents loading bundled .so
 
 [dependency-groups]
 dev = [
