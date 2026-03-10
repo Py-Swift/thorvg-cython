@@ -54,7 +54,7 @@ test-command = ""  # disabled: iOS tests require host app with embedded xcframew
 [tool.cibuildwheel.android]
 before-all = "python {project}/tools/build_thorvg.py android --thorvg-root={project}/thorvg --version=$THORVG_VERSION"
 # The host app (Gradle project) is responsible for providing libc++_shared.so
-# and libthorvg-1.so at runtime.  Skip wheel repair and testing.
+# at runtime.  Skip wheel repair (the app bundles the native libs).
 # repair-wheel-command = "cp {wheel} {dest_dir}/"
 environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output", ANDROID_API_LEVEL = "24" }
 test-sources = ["tests"]
