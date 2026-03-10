@@ -19,10 +19,13 @@ jobs:
         python-version: "3.13"
     - uses: astral-sh/setup-uv@v5
 
-    - name: Clone and build ThorVG
+    - name: Download and build ThorVG
+      env:
+        THORVG_VERSION: "1.0.1"
       run: |
         uv tool install meson
-        git clone https://github.com/psychowasp/thorvg.git
+        curl -sL https://github.com/thorvg/thorvg/archive/refs/tags/v${THORVG_VERSION}.tar.gz | tar xz
+        mv thorvg-${THORVG_VERSION} thorvg
         bash tools/thorvg_scripts/build_macos.sh thorvg
 
     - name: Run tests
@@ -38,10 +41,13 @@ jobs:
         python-version: "3.13"
     - uses: astral-sh/setup-uv@v5
 
-    - name: Clone and build ThorVG
+    - name: Download and build ThorVG
+      env:
+        THORVG_VERSION: "1.0.1"
       run: |
         uv tool install meson
-        git clone https://github.com/psychowasp/thorvg.git
+        curl -sL https://github.com/thorvg/thorvg/archive/refs/tags/v${THORVG_VERSION}.tar.gz | tar xz
+        mv thorvg-${THORVG_VERSION} thorvg
         bash tools/thorvg_scripts/build_linux.sh thorvg
 
     - name: Run tests
@@ -57,10 +63,16 @@ jobs:
         python-version: "3.13"
     - uses: astral-sh/setup-uv@v5
 
-    - name: Clone and build ThorVG
+    - name: Download and build ThorVG
+      env:
+        THORVG_VERSION: "1.0.1"
+      shell: bash
       run: |
         uv tool install meson
-        git clone https://github.com/psychowasp/thorvg.git
+        curl -sL https://github.com/thorvg/thorvg/archive/refs/tags/v${THORVG_VERSION}.tar.gz | tar xz
+        mv thorvg-${THORVG_VERSION} thorvg
+    - name: Build ThorVG
+      run: |
         call tools\thorvg_scripts\build_windows.bat thorvg
 
     - name: Run tests

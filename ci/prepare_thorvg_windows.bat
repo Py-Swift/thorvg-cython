@@ -24,22 +24,30 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM 2. Clone thorvg if not already present
+REM 2. Download thorvg release if not already present
 set "THORVG_DIR=%PROJECT%\thorvg"
+set "THORVG_VERSION=1.0.1"
 if not exist "%THORVG_DIR%\" (
-    echo Cloning thorvg ...
-    git clone https://github.com/psychowasp/thorvg.git "%THORVG_DIR%"
+    echo Downloading thorvg v%THORVG_VERSION% ...
+    curl -sL https://github.com/thorvg/thorvg/archive/refs/tags/v%THORVG_VERSION%.tar.gz -o thorvg-src.tar.gz
     if errorlevel 1 (
-        echo FAILED: git clone
+        echo FAILED: curl download
         exit /b 1
     )
+    tar xzf thorvg-src.tar.gz -C "%PROJECT%"
+    if errorlevel 1 (
+        echo FAILED: tar extract
+        exit /b 1
+    )
+    move "%PROJECT%\thorvg-%THORVG_VERSION%" "%THORVG_DIR%"
+    del thorvg-src.tar.gz
 ) else (
-    echo thorvg directory already exists, skipping clone.
+    echo thorvg directory already exists, skipping download.
 )
 
 REM 3. Verify the header we need
 if not exist "%THORVG_DIR%\src\bindings\capi\thorvg_capi.h" (
-    echo FAILED: thorvg_capi.h not found after clone!
+    echo FAILED: thorvg_capi.h not found after download!
     echo Expected: %THORVG_DIR%\src\bindings\capi\thorvg_capi.h
     dir "%THORVG_DIR%\src\bindings\capi\" 2>nul
     exit /b 1

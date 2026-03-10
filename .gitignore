@@ -35,6 +35,6 @@ builddir*/
 output/
 src/.framework/
 
-# thorvg source (symlink for local dev, cloned in CI)
+# thorvg source (symlink for local dev, downloaded in CI)
 thorvg
 uv.lock

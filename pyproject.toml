@@ -20,55 +20,67 @@ dev = ["pytest", "cibuildwheel", "meson", "ninja"]
 # ---------------------------------------------------------------------------
 #  cibuildwheel configuration
 #
-#  Expects a "thorvg/" directory (symlink for local dev, cloned in CI).
+#  Downloads thorvg release source tarball (not git clone).
 # ---------------------------------------------------------------------------
 [tool.cibuildwheel]
 build = "cp311-* cp312-* cp313-* cp314-*"
 skip = "pp* *-musllinux_i686"
-environment = { THORVG_ROOT = "thorvg" }
+environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1" }
 test-requires = ["pytest"]
 test-command = "pytest {project}/tests -v"
 
 
 [tool.cibuildwheel.linux]
 before-all = """
-    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
+    if [ ! -d {project}/thorvg ]; then
+        curl -sL https://github.com/thorvg/thorvg/archive/refs/tags/v$THORVG_VERSION.tar.gz | tar xz -C {project}
+        mv {project}/thorvg-$THORVG_VERSION {project}/thorvg
+    fi
     bash {project}/tools/thorvg_scripts/build_linux.sh {project}/thorvg
 """
-environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/linux_x86_64" }
+environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output/linux_x86_64" }
 
 [tool.cibuildwheel.macos]
 before-all = """
-    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
+    if [ ! -d {project}/thorvg ]; then
+        curl -sL https://github.com/thorvg/thorvg/archive/refs/tags/v$THORVG_VERSION.tar.gz | tar xz -C {project}
+        mv {project}/thorvg-$THORVG_VERSION {project}/thorvg
+    fi
     bash {project}/tools/thorvg_scripts/build_macos.sh {project}/thorvg
     bash {project}/tools/thorvg_scripts/download_angle.sh macos-universal {project}/thorvg/output
 """
-environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fat", ANGLE_LIB_DIR = "thorvg/output/angle", MACOSX_DEPLOYMENT_TARGET = "11.0" }
+environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output/macos_fat", ANGLE_LIB_DIR = "thorvg/output/angle", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 [tool.cibuildwheel.windows]
 before-all = "{project}\\ci\\prepare_thorvg_windows.bat {project}"
-environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/windows_x64" }
+environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output/windows_x64" }
 
 [tool.cibuildwheel.ios]
 before-all = """
-    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
+    if [ ! -d {project}/thorvg ]; then
+        curl -sL https://github.com/thorvg/thorvg/archive/refs/tags/v$THORVG_VERSION.tar.gz | tar xz -C {project}
+        mv {project}/thorvg-$THORVG_VERSION {project}/thorvg
+    fi
     bash {project}/tools/thorvg_scripts/build_ios.sh {project}/thorvg
     bash {project}/tools/thorvg_scripts/download_angle.sh ios {project}/thorvg/output
 """
 xbuild-tools = ["ninja"]
-environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/ios_arm64", ANGLE_XCFRAMEWORK_DIR = "thorvg/output/angle" }
+environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output/ios_arm64", ANGLE_XCFRAMEWORK_DIR = "thorvg/output/angle" }
 test-sources = ["tests"]
 test-command = "python -m pytest ./tests -v"
 
 [tool.cibuildwheel.android]
 before-all = """
-    test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
+    if [ ! -d {project}/thorvg ]; then
+        curl -sL https://github.com/thorvg/thorvg/archive/refs/tags/v$THORVG_VERSION.tar.gz | tar xz -C {project}
+        mv {project}/thorvg-$THORVG_VERSION {project}/thorvg
+    fi
     bash {project}/tools/thorvg_scripts/build_android.sh {project}/thorvg
 """
 # The host app (Gradle project) is responsible for providing libc++_shared.so.
 # Skip cibuildwheel's default repair which tries to bundle it.
 # repair-wheel-command = "cp {wheel} {dest_dir}/"
-environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output", ANDROID_API_LEVEL = "24" }
+environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output", ANDROID_API_LEVEL = "24" }
 test-sources = ["tests"]
 test-command = "python -m pytest ./tests -v"
 
