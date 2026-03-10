@@ -58,7 +58,7 @@ before-all = "python {project}/tools/build_thorvg.py android --thorvg-root={proj
 # repair-wheel-command = "cp {wheel} {dest_dir}/"
 environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output", ANDROID_API_LEVEL = "24" }
 test-sources = ["tests"]
-test-command = ""  # disabled: Android classloader namespace prevents loading bundled .so
+test-command = "python -m pytest ./tests -v"
 
 [dependency-groups]
 dev = [
