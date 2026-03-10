@@ -192,7 +192,7 @@ def _meson_common(platform: str, gpu: str, *,
     ]
 
     # Engine + extra flags depend on GPU mode
-    extras = ["lottie_exp"]
+    extras = ["lottie_exp", "openmp"]
 
     if gpu:
         args.append("-Dengines=sw,gl")
