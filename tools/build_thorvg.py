@@ -35,7 +35,6 @@ Environment variable overrides
 from __future__ import annotations
 
 import argparse
-import io
 import os
 import platform as _plat
 import shutil
@@ -116,9 +115,13 @@ def _download_thorvg_source(version: str, dest: Path) -> None:
 
     print(f"[download] Fetching thorvg v{version} …")
     print(f"  {url}")
-    data = urllib.request.urlopen(url).read()
-    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tf:
-        tf.extractall(path=str(parent))
+    resp = urllib.request.urlopen(url, timeout=120)
+    with tarfile.open(fileobj=resp, mode="r|gz") as tf:
+        for member in tf:
+            # Guard against path traversal
+            if member.name.startswith("/") or ".." in member.name.split("/"):
+                raise RuntimeError(f"Unsafe tar member: {member.name}")
+            tf.extract(member, path=str(parent))
 
     if not extracted.is_dir():
         sys.exit(f"ERROR: expected directory {extracted} after extraction")
