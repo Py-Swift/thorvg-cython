@@ -210,6 +210,260 @@ def _meson_common(platform: str, gpu: str, *,
 
 
 # ---------------------------------------------------------------------------
+#  OpenMP (libomp) cross-compilation for Apple platforms
+# ---------------------------------------------------------------------------
+LLVM_VERSION = "19.1.7"
+LLVM_OPENMP_URL = (
+    f"https://github.com/llvm/llvm-project/releases/download/"
+    f"llvmorg-{LLVM_VERSION}/openmp-{LLVM_VERSION}.src.tar.xz"
+)
+LLVM_CMAKE_URL = (
+    f"https://github.com/llvm/llvm-project/releases/download/"
+    f"llvmorg-{LLVM_VERSION}/cmake-{LLVM_VERSION}.src.tar.xz"
+)
+
+
+def _download_llvm_openmp(work_dir: Path) -> tuple[Path, Path]:
+    """Download LLVM openmp + cmake sources into *work_dir*.
+
+    Returns (openmp_src, cmake_src) paths.
+    """
+    openmp_src = work_dir / "openmp"
+    cmake_src = work_dir / "cmake"
+
+    if openmp_src.is_dir() and cmake_src.is_dir():
+        print("[libomp] LLVM openmp sources already present — skipping download")
+        return openmp_src, cmake_src
+
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    for url, name, dest in [
+        (LLVM_OPENMP_URL, f"openmp-{LLVM_VERSION}.src", openmp_src),
+        (LLVM_CMAKE_URL, f"cmake-{LLVM_VERSION}.src", cmake_src),
+    ]:
+        if dest.is_dir():
+            continue
+        print(f"[libomp] Downloading {url} ...")
+        resp = urllib.request.urlopen(url, timeout=120)
+        # xz tarball — Python 3.3+ supports lzma via tarfile
+
+        with tarfile.open(fileobj=resp, mode="r|xz") as tf:
+            for member in tf:
+                resolved = (work_dir / member.name).resolve()
+                if not str(resolved).startswith(str(work_dir.resolve())):
+                    raise RuntimeError(f"Unsafe tar member: {member.name}")
+                tf.extract(member, path=str(work_dir))
+        extracted = work_dir / name
+        if extracted.is_dir():
+            extracted.rename(dest)
+        else:
+            sys.exit(f"ERROR: expected {extracted} after extraction")
+
+    print(f"[libomp] Sources ready at {work_dir}")
+    return openmp_src, cmake_src
+
+
+def _build_libomp(work_dir: Path, *,
+                  system_name: str,
+                  sysroot: str,
+                  arch_cmake: str,
+                  arch_omp: str,
+                  deployment_target: str,
+                  deployment_flag: str,
+                  tag: str | None = None,
+                  target_triple: str | None = None) -> tuple[Path, Path]:
+    """Cross-compile libomp.a and return (libomp_a, omp_h) paths.
+
+    Parameters
+    ----------
+    work_dir : Path
+        Directory containing ``openmp/`` and ``cmake/`` source trees
+        and where build artifacts will be placed.
+    system_name : str
+        CMake system name: ``Darwin`` or ``iOS``.
+    sysroot : str
+        Absolute path to the SDK (e.g. MacOSX.sdk, iPhoneOS.sdk).
+    arch_cmake : str
+        CMake architecture: ``arm64`` or ``x86_64``.
+    arch_omp : str
+        libomp architecture: ``aarch64`` or ``x86_64``.
+    deployment_target : str
+        Minimum OS version (e.g. ``11.0``, ``13.0``).
+    deployment_flag : str
+        Compiler flag for minimum version (e.g. ``-mmacosx-version-min=11.0``).
+    tag : str, optional
+        Override for the build directory tag.  Defaults to
+        ``{system_name.lower()}-{arch_cmake}``.
+    target_triple : str, optional
+        If given, ``-target <triple>`` is passed to the C / C++ / ASM
+        compilers.  Required for iOS Simulator builds so that object
+        files carry the correct platform marker (e.g.
+        ``arm64-apple-ios13.0-simulator``).
+
+    Returns
+    -------
+    tuple[Path, Path]
+        ``(libomp.a, omp.h)`` absolute paths.
+    """
+    _ensure_tool("cmake")
+
+    build_tag = tag or f"{system_name.lower()}-{arch_cmake}"
+    build_dir = work_dir / f"build-{build_tag}"
+    lib_path = build_dir / "runtime" / "src" / "libomp.a"
+    hdr_path = build_dir / "runtime" / "src" / "omp.h"
+
+    if lib_path.exists() and hdr_path.exists():
+        print(f"[libomp] {build_tag}: already built — skipping")
+        return lib_path, hdr_path
+
+    openmp_src = work_dir / "openmp"
+    cmake_src = work_dir / "cmake"
+
+    cc = shutil.which("clang") or "/usr/bin/clang"
+    cxx = shutil.which("clang++") or "/usr/bin/clang++"
+
+    print(f"[libomp] Building libomp for {build_tag} ...")
+    cmake_args = [
+        "cmake",
+        "-S", str(openmp_src),
+        "-B", str(build_dir),
+        "-DCMAKE_BUILD_TYPE=Release",
+        f"-DCMAKE_SYSTEM_NAME={system_name}",
+        f"-DCMAKE_OSX_SYSROOT={sysroot}",
+        f"-DCMAKE_OSX_ARCHITECTURES={arch_cmake}",
+        f"-DCMAKE_OSX_DEPLOYMENT_TARGET={deployment_target}",
+        f"-DCMAKE_C_COMPILER={cc}",
+        f"-DCMAKE_CXX_COMPILER={cxx}",
+        f"-DCMAKE_ASM_COMPILER={cc}",
+        f"-DLLVM_COMMON_CMAKE_UTILS={cmake_src}",
+        "-DLIBOMP_ENABLE_SHARED=OFF",
+        f"-DLIBOMP_ARCH={arch_omp}",
+        "-DLIBOMP_OMPT_SUPPORT=OFF",
+        "-DLIBOMP_USE_HWLOC=OFF",
+        "-DLIBOMP_FORTRAN_MODULES=OFF",
+        "-DCMAKE_CROSSCOMPILING=TRUE",
+    ]
+
+    # For iOS Simulator targets the default -target chosen by cmake
+    # (based on CMAKE_SYSTEM_NAME=iOS) points at the *device* platform.
+    # We override it so the emitted object files carry the correct
+    # simulator platform marker.
+    if target_triple:
+        for lang in ("C", "CXX", "ASM"):
+            cmake_args.append(f"-DCMAKE_{lang}_FLAGS=-target {target_triple}")
+
+    _run(cmake_args)
+    _run(["cmake", "--build", str(build_dir), "--config", "Release"])
+
+    if not lib_path.exists():
+        sys.exit(f"ERROR: libomp build failed — {lib_path} not found")
+
+    print(f"[libomp] {build_tag}: {lib_path} ({lib_path.stat().st_size} bytes)")
+    return lib_path, hdr_path
+
+
+def _prepare_libomp_apple(root: Path, targets: list[dict]) -> dict[str, tuple[Path, Path]]:
+    """Build libomp for multiple Apple targets.
+
+    Parameters
+    ----------
+    root : Path
+        thorvg root directory.
+    targets : list[dict]
+        Each dict has keys: ``name``, ``system_name``, ``sysroot``,
+        ``arch_cmake``, ``arch_omp``, ``deployment_target``,
+        ``deployment_flag``.
+
+    Returns
+    -------
+    dict[str, tuple[Path, Path]]
+        Mapping of target *name* → ``(libomp.a, omp.h)``.
+    """
+    work_dir = root / "libomp_build"
+    _download_llvm_openmp(work_dir)
+
+    results: dict[str, tuple[Path, Path]] = {}
+    for t in targets:
+        lib, hdr = _build_libomp(
+            work_dir,
+            system_name=t["system_name"],
+            sysroot=t["sysroot"],
+            arch_cmake=t["arch_cmake"],
+            arch_omp=t["arch_omp"],
+            deployment_target=t["deployment_target"],
+            deployment_flag=t["deployment_flag"],
+            tag=t.get("tag"),
+            target_triple=t.get("target_triple"),
+        )
+        results[t["name"]] = (lib, hdr)
+
+    return results
+
+
+def _inject_openmp_cross_file(template_path: Path, output_path: Path,
+                               libomp_a: Path, omp_h_dir: Path) -> Path:
+    """Copy a meson cross file and inject OpenMP flags.
+
+    Adds ``-Xclang -fopenmp -I<omp.h dir>`` to ``cpp_args`` and
+    ``<libomp.a path>`` to ``cpp_link_args``.
+    """
+    content = template_path.read_text()
+
+    omp_include = str(omp_h_dir)
+    omp_lib = str(libomp_a)
+
+    # Inject into cpp_args: append -Xclang, -fopenmp, -I<dir> before the closing ]
+    content = _inject_cross_list(content, "cpp_args",
+                                 ["-Xclang", "-fopenmp", f"-I{omp_include}"])
+    # Inject into cpp_link_args: append the static lib path before closing ]
+    content = _inject_cross_list(content, "cpp_link_args", [omp_lib])
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(content)
+    print(f"  [openmp] Injected OpenMP flags into {output_path}")
+    return output_path
+
+
+def _inject_cross_list(content: str, key: str, values: list[str]) -> str:
+    """Inject additional values into a meson cross-file list option.
+
+    E.g. turn ``cpp_args = ['-mmacosx-version-min=11.0']`` into
+    ``cpp_args = ['-mmacosx-version-min=11.0', '-Xclang', '-fopenmp',
+    '-I/path/to/omp']``.
+    """
+    import re
+    escaped = [f"'{v}'" for v in values]
+    addition = ", " + ", ".join(escaped)
+
+    pattern = re.compile(
+        rf"^(\s*{re.escape(key)}\s*=\s*\[.*?)(]\s*)$",
+        re.MULTILINE,
+    )
+    match = pattern.search(content)
+    if match:
+        content = content[:match.end(1)] + addition + content[match.start(2):]
+    else:
+        print(f"  [openmp] Warning: could not find '{key}' in cross file")
+    return content
+
+
+# Apple SDK path helpers
+def _xcode_dev() -> str:
+    """Return the Xcode developer directory."""
+    try:
+        result = _run(["xcode-select", "-p"], capture=True)
+        return result.stdout.strip()
+    except Exception:
+        return "/Applications/Xcode.app/Contents/Developer"
+
+
+def _apple_sdk(platform_name: str) -> str:
+    """Return the SDK path for the given Apple platform."""
+    dev = _xcode_dev()
+    return f"{dev}/Platforms/{platform_name}.platform/Developer/SDKs/{platform_name}.sdk"
+
+
+# ---------------------------------------------------------------------------
 #  Platform: Linux
 # ---------------------------------------------------------------------------
 def build_linux(root: Path, gpu: str) -> None:
@@ -271,19 +525,58 @@ def build_macos(root: Path, gpu: str) -> None:
         shutil.rmtree(build_root)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    def _build(name: str, cross_file: Path) -> None:
+    # --- Build libomp for macOS arm64 + x86_64 ---
+    macos_sdk = _apple_sdk("MacOSX")
+    omp_targets = [
+        {
+            "name": "macos_arm64",
+            "system_name": "Darwin",
+            "sysroot": macos_sdk,
+            "arch_cmake": "arm64",
+            "arch_omp": "aarch64",
+            "deployment_target": "11.0",
+            "deployment_flag": "-mmacosx-version-min=11.0",
+        },
+        {
+            "name": "macos_x86_64",
+            "system_name": "Darwin",
+            "sysroot": macos_sdk,
+            "arch_cmake": "x86_64",
+            "arch_omp": "x86_64",
+            "deployment_target": "11.0",
+            "deployment_flag": "-mmacosx-version-min=11.0",
+        },
+    ]
+    omp = _prepare_libomp_apple(root, omp_targets)
+
+    # --- Generate cross files with OpenMP flags ---
+    gen_cross_dir = build_root / "cross"
+    gen_cross_dir.mkdir(parents=True, exist_ok=True)
+
+    cross_files = {}
+    for name, template_name in [("macos_arm64", "macos_arm64.txt"),
+                                 ("macos_x86_64", "macos_x86_64.txt")]:
+        libomp_a, omp_h = omp[name]
+        cf = _inject_openmp_cross_file(
+            CROSS_DIR / template_name,
+            gen_cross_dir / template_name,
+            libomp_a, omp_h.parent,
+        )
+        cross_files[name] = cf
+
+    def _build(name: str) -> None:
         bd = build_root / name
         print(f">>> Building: {name}")
         _run(
-            ["meson", "setup", str(bd), "--cross-file", str(cross_file)]
+            ["meson", "setup", str(bd), "--cross-file", str(cross_files[name])]
             + meson_args,
             cwd=root,
         )
         _run(["ninja", "-C", str(bd)], cwd=root)
         print(f"<<< Done: {name}\n")
 
-    _build("macos_arm64", CROSS_DIR / "macos_arm64.txt")
-    _build("macos_x86_64", CROSS_DIR / "macos_x86_64.txt")
+    _build("macos_arm64")
+    _build("macos_x86_64")
 
     # Copy individual arch outputs
     for name in ("macos_arm64", "macos_x86_64"):
@@ -333,20 +626,74 @@ def build_ios(root: Path, gpu: str) -> None:
         shutil.rmtree(build_root)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    def _build(name: str, cross_file: Path) -> None:
+    # --- Build libomp for iOS arm64 + simulator arm64/x86_64 ---
+    ios_sdk = _apple_sdk("iPhoneOS")
+    sim_sdk = _apple_sdk("iPhoneSimulator")
+    omp_targets = [
+        {
+            "name": "ios_arm64",
+            "system_name": "iOS",
+            "sysroot": ios_sdk,
+            "arch_cmake": "arm64",
+            "arch_omp": "aarch64",
+            "deployment_target": "13.0",
+            "deployment_flag": "-miphoneos-version-min=13.0",
+        },
+        {
+            "name": "ios_sim_arm64",
+            "system_name": "iOS",
+            "sysroot": sim_sdk,
+            "arch_cmake": "arm64",
+            "arch_omp": "aarch64",
+            "deployment_target": "13.0",
+            "deployment_flag": "-mios-simulator-version-min=13.0",
+            "tag": "ios-sim-arm64",
+            "target_triple": "arm64-apple-ios13.0-simulator",
+        },
+        {
+            "name": "ios_sim_x86_64",
+            "system_name": "iOS",
+            "sysroot": sim_sdk,
+            "arch_cmake": "x86_64",
+            "arch_omp": "x86_64",
+            "deployment_target": "13.0",
+            "deployment_flag": "-mios-simulator-version-min=13.0",
+            "tag": "ios-sim-x86_64",
+            "target_triple": "x86_64-apple-ios13.0-simulator",
+        },
+    ]
+    omp = _prepare_libomp_apple(root, omp_targets)
+
+    # --- Generate cross files with OpenMP flags ---
+    gen_cross_dir = build_root / "cross"
+    gen_cross_dir.mkdir(parents=True, exist_ok=True)
+
+    cross_files = {}
+    for name, template_name in [("ios_arm64", "ios_arm64.txt"),
+                                 ("ios_sim_arm64", "ios_simulator_arm64.txt"),
+                                 ("ios_sim_x86_64", "ios_simulator_x86_64.txt")]:
+        libomp_a, omp_h = omp[name]
+        cf = _inject_openmp_cross_file(
+            CROSS_DIR / template_name,
+            gen_cross_dir / template_name,
+            libomp_a, omp_h.parent,
+        )
+        cross_files[name] = cf
+
+    def _build(name: str) -> None:
         bd = build_root / name
         print(f">>> Building: {name}")
         _run(
-            ["meson", "setup", str(bd), "--cross-file", str(cross_file)]
+            ["meson", "setup", str(bd), "--cross-file", str(cross_files[name])]
             + meson_args,
             cwd=root,
         )
         _run(["ninja", "-C", str(bd)], cwd=root)
         print(f"<<< Done: {name}\n")
 
-    _build("ios_arm64", CROSS_DIR / "ios_arm64.txt")
-    _build("ios_sim_arm64", CROSS_DIR / "ios_simulator_arm64.txt")
-    _build("ios_sim_x86_64", CROSS_DIR / "ios_simulator_x86_64.txt")
+    _build("ios_arm64")
+    _build("ios_sim_arm64")
+    _build("ios_sim_x86_64")
 
     # --- .framework bundles ---
     def _make_framework(dylib_path: Path, fw_output_dir: Path) -> None:
