@@ -27,8 +27,6 @@ from .thorvg import (  # noqa: F401
     # Core
     Engine,
     Canvas,
-    SwCanvas,
-    GlCanvas,
     Paint,
     Shape,
     Picture,
@@ -45,3 +43,6 @@ from .thorvg import (  # noqa: F401
     Saver,
     Accessor,
 )
+
+from .sw_canvas import SwCanvas  # noqa: F401
+from .gl_canvas import GlCanvas  # noqa: F401

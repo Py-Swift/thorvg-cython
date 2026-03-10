@@ -13,6 +13,16 @@ import os
 import sys
 import shutil
 import subprocess
+
+# ---------------------------------------------------------------------------
+#  GPU mode detection
+#
+#  THORVG_GPU env var controls whether the real GlCanvas (gl_canvas.pyx) or
+#  a stub (_gl_canvas.pyx) is compiled.  Future values: "gl", "gles", "angle".
+#  Any non-empty value enables GPU mode.
+# ---------------------------------------------------------------------------
+THORVG_GPU = os.environ.get("THORVG_GPU", "")
+GPU_MODE = bool(THORVG_GPU)
 import sysconfig
 from pathlib import Path
 
@@ -410,21 +420,46 @@ if sys.platform in ("darwin", "ios"):
 # ---------------------------------------------------------------------------
 #  Extension definition
 # ---------------------------------------------------------------------------
-ext_source = "src/thorvg_cython/thorvg.pyx"
+
+# Common kwargs shared by all Cython extensions
+_ext_kwargs = dict(
+    include_dirs=include_dirs,
+    library_dirs=library_dirs,
+    libraries=libraries,
+    extra_compile_args=extra_compile_args,
+    extra_link_args=extra_link_args,
+    language="c++",
+)
+
+_ext_modules = [
+    Extension(
+        name="thorvg_cython.thorvg",
+        sources=["src/thorvg_cython/thorvg.pyx"],
+        **_ext_kwargs,
+    ),
+    Extension(
+        name="thorvg_cython.sw_canvas",
+        sources=["src/thorvg_cython/sw_canvas.pyx"],
+        **_ext_kwargs,
+    ),
+]
+
+# GPU mode: compile gl_canvas.pyx → gl_canvas.so (overrides gl_canvas.py stub)
+# No GPU:   gl_canvas.py (plain Python stub) is used at import time
+if GPU_MODE:
+    _ext_modules.append(
+        Extension(
+            name="thorvg_cython.gl_canvas",
+            sources=["src/thorvg_cython/gl_canvas.pyx"],
+            **_ext_kwargs,
+        ),
+    )
+    print(f"[setup.py] GPU_MODE enabled (THORVG_GPU={THORVG_GPU!r}) — compiling real GlCanvas")
+else:
+    print("[setup.py] GPU_MODE disabled — gl_canvas.py stub will be used")
 
 extensions = cythonize(
-    [
-        Extension(
-            name="thorvg_cython.thorvg",
-            sources=[ext_source],
-            include_dirs=include_dirs,
-            library_dirs=library_dirs,
-            libraries=libraries,
-            extra_compile_args=extra_compile_args,
-            extra_link_args=extra_link_args,
-            language="c++",
-        ),
-    ],
+    _ext_modules,
     compiler_directives={
         "language_level": "3",
         "boundscheck": False,
@@ -447,7 +482,7 @@ setup(
     url="https://github.com/thorvg/thorvg",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
-    exclude_package_data={"": ["*.cpp"]},
+    exclude_package_data={"": ["*.cpp"], **({"thorvg_cython": ["gl_canvas.py"]} if GPU_MODE else {})},
     package_data={"thorvg_cython": ["*.dylib"]},
     ext_modules=extensions,
     python_requires=">=3.9",

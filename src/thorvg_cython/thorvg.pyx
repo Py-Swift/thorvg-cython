@@ -164,12 +164,6 @@ cdef class PixelBuffer:
         # … add paints, draw, sync …
         texture.blit_buffer(buf, colorfmt='rgba', bufferfmt='ubyte')
     """
-    cdef uint32_t* _data
-    cdef uint32_t  _w, _h, _stride
-    cdef int       _cs
-    cdef Py_ssize_t _nbytes
-    cdef Py_ssize_t _shape[1]
-    cdef Py_ssize_t _strides[1]
 
     def __cinit__(self, uint32_t w, uint32_t h, int cs=0,
                   uint32_t stride=0):
@@ -314,8 +308,6 @@ class Engine:
 # ═══════════════════════════════════════════════════════════════════
 
 cdef class Paint:
-    cdef tvg.Tvg_Paint _p
-    cdef bint _owned
 
     def __cinit__(self):
         self._p = NULL
@@ -454,7 +446,6 @@ cdef class Paint:
 # ═══════════════════════════════════════════════════════════════════
 
 cdef class Canvas:
-    cdef tvg.Tvg_Canvas _c
 
     def __cinit__(self):
         self._c = NULL
@@ -493,157 +484,11 @@ cdef class Canvas:
         return Result(tvg.tvg_canvas_set_viewport(self._c, x, y, w, h))
 
 
-cdef class SwCanvas(Canvas):
-    """Software-rasterized canvas with built-in pixel buffer.
-
-    Pass width/height to get an integrated buffer that supports the
-    Python buffer protocol (PEP 3118)::
-
-        canvas = SwCanvas(800, 600)
-        canvas.add(shape)
-        canvas.draw()
-        canvas.sync()
-        texture.blit_buffer(canvas)   # zero-copy
-        data = bytes(canvas)          # snapshot
-    """
-    cdef PixelBuffer _buf
-
-    def __cinit__(self, uint32_t w=0, uint32_t h=0, int cs=0,
-                  int engine_option=1):
-        self._c = tvg.tvg_swcanvas_create(<tvg.Tvg_Engine_Option>engine_option)
-        self._buf = None
-        if w > 0 and h > 0:
-            self._buf = PixelBuffer(w, h, cs)
-            tvg.tvg_swcanvas_set_target(
-                self._c, self._buf._data, self._buf._stride,
-                self._buf._w, self._buf._h,
-                <tvg.Tvg_Colorspace>self._buf._cs)
-
-    def resize(self, uint32_t w, uint32_t h, int cs=-1):
-        """Resize the internal pixel buffer (reallocates)."""
-        cdef int actual_cs = cs if cs >= 0 else (self._buf._cs if self._buf is not None else 0)
-        self._buf = PixelBuffer(w, h, actual_cs)
-        return Result(tvg.tvg_swcanvas_set_target(
-            self._c, self._buf._data, self._buf._stride,
-            self._buf._w, self._buf._h,
-            <tvg.Tvg_Colorspace>self._buf._cs))
-
-    # ---- buffer protocol (delegates to internal PixelBuffer) ----
-
-    def __getbuffer__(self, Py_buffer *view, int flags):
-        if self._buf is None:
-            raise BufferError("SwCanvas has no pixel buffer - pass w, h to constructor")
-        view.buf        = <void*>self._buf._data
-        view.len        = self._buf._nbytes
-        view.readonly   = 0
-        view.format     = "B"
-        view.ndim       = 1
-        view.shape      = self._buf._shape
-        view.strides    = self._buf._strides
-        view.suboffsets = NULL
-        view.itemsize   = 1
-        view.obj        = self
-
-    def __releasebuffer__(self, Py_buffer *view):
-        pass
-
-    # ---- pixel access -------------------------------------------
-
-    @property
-    def buffer(self):
-        """The internal PixelBuffer, or None."""
-        return self._buf
-
-    @property
-    def width(self):
-        return self._buf._w if self._buf is not None else 0
-
-    @property
-    def height(self):
-        return self._buf._h if self._buf is not None else 0
-
-    @property
-    def colorspace(self):
-        return Colorspace(self._buf._cs) if self._buf is not None else Colorspace.UNKNOWN
-
-    def clear(self):
-        """Zero out all pixels."""
-        if self._buf is not None:
-            self._buf.clear()
-
-    def __len__(self):
-        return self._buf._nbytes if self._buf is not None else 0
-
-    def __repr__(self):
-        if self._buf is not None:
-            return (f"SwCanvas({self._buf._w}x{self._buf._h}, "
-                    f"cs={Colorspace(self._buf._cs).name})")
-        return "SwCanvas(no buffer)"
-
-
-cdef class GlCanvas(Canvas):
-    """OpenGL-accelerated canvas for GPU rendering.
-
-    Unlike SwCanvas, GlCanvas does not manage a pixel buffer.
-    The caller must provide an active OpenGL (ES) context and
-    target surface via :meth:`target`.
-
-    Example with an externally managed GL context::
-
-        canvas = GlCanvas()
-        # Caller creates/binds the GL context (e.g., via EGL, ANGLE, GLFW)
-        canvas.target(0, 0, 0, fbo_id, width, height, Colorspace.ABGR8888S)
-        canvas.add(shape)
-        canvas.draw()
-        canvas.sync()
-
-    Args:
-        engine_option: Engine quality option (default: Quality).
-
-    Notes:
-        - On macOS/iOS, thorvg uses ANGLE (OpenGL ES → Metal translation).
-          Ensure ANGLE dylibs (libEGL.dylib, libGLESv2.dylib) are loadable.
-        - On Windows/Linux, thorvg loads native OpenGL at runtime.
-        - On Android, thorvg loads native OpenGL ES at runtime.
-        - If display and surface are 0 (NULL), thorvg assumes the GL
-          context is already current and will not manage it.
-    """
-
-    def __cinit__(self, int engine_option=1):
-        self._c = tvg.tvg_glcanvas_create(<tvg.Tvg_Engine_Option>engine_option)
-
-    def target(self, uintptr_t display, uintptr_t surface,
-               uintptr_t context, int32_t fbo_id,
-               uint32_t w, uint32_t h, int cs=0):
-        """Set the GL render target.
-
-        Args:
-            display:  EGLDisplay handle (0 for no EGL management).
-            surface:  EGLSurface handle (0 for no EGL management).
-            context:  OpenGL context handle (0 for no context management).
-            fbo_id:   Framebuffer Object ID (0 = default/main surface).
-            w:        Render target width in pixels.
-            h:        Render target height in pixels.
-            cs:       Colorspace (default: ABGR8888).
-        """
-        return Result(tvg.tvg_glcanvas_set_target(
-            self._c,
-            <void*>display,
-            <void*>surface,
-            <void*>context,
-            fbo_id, w, h,
-            <tvg.Tvg_Colorspace>cs))
-
-    def __repr__(self):
-        return "GlCanvas()"
-
-
 # ═══════════════════════════════════════════════════════════════════
 #  Gradient
 # ═══════════════════════════════════════════════════════════════════
 
 cdef class Gradient:
-    cdef tvg.Tvg_Gradient _g
 
     def __cinit__(self):
         self._g = NULL
@@ -1133,7 +978,6 @@ cdef class Text(Paint):
 # ═══════════════════════════════════════════════════════════════════
 
 cdef class Animation:
-    cdef tvg.Tvg_Animation _a
 
     def __cinit__(self):
         self._a = tvg.tvg_animation_new()
@@ -1230,7 +1074,6 @@ cdef class LottieAnimation(Animation):
 # ═══════════════════════════════════════════════════════════════════
 
 cdef class Saver:
-    cdef tvg.Tvg_Saver _s
 
     def __cinit__(self):
         self._s = tvg.tvg_saver_new()
@@ -1257,7 +1100,6 @@ cdef class Saver:
 # ═══════════════════════════════════════════════════════════════════
 
 cdef class Accessor:
-    cdef tvg.Tvg_Accessor _acc
 
     def __cinit__(self):
         self._acc = tvg.tvg_accessor_new()
