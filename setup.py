@@ -405,7 +405,10 @@ elif _is_android_build():
         _bundle_dylib(_android_so, _PKG_SRC)
         library_dirs.append(str(_lib_dir))
         libraries.append("thorvg-1")
-        extra_link_args.append("-Wl,-rpath,$ORIGIN")
+        # --disable-new-dtags forces DT_RPATH instead of DT_RUNPATH.
+        # Android's Bionic linker respects DT_RPATH but ignores
+        # DT_RUNPATH with $ORIGIN in app namespaces.
+        extra_link_args.extend(["-Wl,-rpath,$ORIGIN", "-Wl,--disable-new-dtags"])
     else:
         library_dirs.append(str(_lib_dir))
         libraries.append("thorvg")
