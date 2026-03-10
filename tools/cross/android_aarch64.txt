@@ -13,7 +13,7 @@ strip   = 'NDK/toolchains/llvm/prebuilt/HOST_TAG/bin/llvm-strip'
 sys_root = 'NDK/toolchains/llvm/prebuilt/HOST_TAG/sysroot'
 
 [built-in options]
-cpp_link_args = ['-ldl']
+cpp_link_args = []
 
 [host_machine]
 system = 'android'
