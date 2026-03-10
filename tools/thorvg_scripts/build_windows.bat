@@ -17,7 +17,7 @@ set "PATH=%PATH:C:\Strawberry\c\bin;=%"
 set "PATH=%PATH:C:\Strawberry\perl\site\bin;=%"
 set "PATH=%PATH:C:\Strawberry\perl\bin;=%"
 
-set MESON_COMMON=--vsenv --buildtype=release --default-library=static -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp
+set MESON_COMMON=--vsenv --buildtype=release --default-library=static -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp -Dengines=sw,gl
 
 set ARCH=%2
 if "%ARCH%"=="" set ARCH=x64

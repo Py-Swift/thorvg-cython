@@ -28,6 +28,7 @@ from .thorvg import (  # noqa: F401
     Engine,
     Canvas,
     SwCanvas,
+    GlCanvas,
     Paint,
     Shape,
     Picture,

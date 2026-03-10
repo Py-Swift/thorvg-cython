@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "thorvg-cython"
-version = "0.0.2"
+version = "0.0.3"
 description = "Cython bindings for the ThorVG vector graphics library"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -41,8 +41,9 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/linux_x8
 before-all = """
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     bash {project}/tools/thorvg_scripts/build_macos.sh {project}/thorvg
+    bash {project}/tools/thorvg_scripts/download_angle.sh macos-universal {project}/thorvg/output
 """
-environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fat", MACOSX_DEPLOYMENT_TARGET = "11.0" }
+environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/macos_fat", ANGLE_LIB_DIR = "thorvg/output/angle", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 [tool.cibuildwheel.windows]
 before-all = "{project}\\ci\\prepare_thorvg_windows.bat {project}"
@@ -52,9 +53,10 @@ environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/windows_
 before-all = """
     test -d {project}/thorvg || git clone https://github.com/psychowasp/thorvg.git {project}/thorvg
     bash {project}/tools/thorvg_scripts/build_ios.sh {project}/thorvg
+    bash {project}/tools/thorvg_scripts/download_angle.sh ios {project}/thorvg/output
 """
 xbuild-tools = ["ninja"]
-environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/ios_arm64" }
+environment = { THORVG_ROOT = "thorvg", THORVG_LIB_DIR = "thorvg/output/ios_arm64", ANGLE_XCFRAMEWORK_DIR = "thorvg/output/angle" }
 test-sources = ["tests"]
 test-command = "python -m pytest ./tests -v"
 

@@ -11,7 +11,7 @@ cd "$ROOT_DIR"
 ROOT_DIR="$(pwd)"
 BUILD_ROOT="$ROOT_DIR/build_linux"
 OUTPUT_DIR="$ROOT_DIR/output"
-MESON_COMMON="--buildtype=release --default-library=static -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp"
+MESON_COMMON="--buildtype=release --default-library=static -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp -Dengines=sw,gl"
 
 ARCH="$(uname -m)"
 

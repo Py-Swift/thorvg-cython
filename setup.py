@@ -11,6 +11,7 @@ Designed to work with cibuildwheel for automated wheel builds.
 """
 import os
 import sys
+import shutil
 import subprocess
 import sysconfig
 from pathlib import Path
@@ -87,6 +88,12 @@ THORVG_LIB_DIR = _resolve_lib_dir()
 THORVG_XCFRAMEWORK = os.environ.get(
     "THORVG_XCFRAMEWORK",
     str(THORVG_ROOT / "output" / "thorvg.xcframework"),
+)
+
+# Path to ANGLE libraries (macOS: .dylib, iOS: .xcframework)
+ANGLE_LIB_DIR = os.environ.get(
+    "ANGLE_LIB_DIR",
+    str(THORVG_ROOT / "output" / "angle"),
 )
 
 # Also look for the CAPI header inside the thorvg source tree
@@ -282,6 +289,21 @@ elif _is_macos_build():
     extra_compile_args.append(f"-mmacosx-version-min={macos_target}")
     extra_link_args.append(f"-mmacosx-version-min={macos_target}")
 
+    # ANGLE: set rpath so extension can find bundled dylibs at runtime
+    _angle_dir = Path(ANGLE_LIB_DIR)
+    _angle_egl = _angle_dir / "libEGL.dylib"
+    _angle_gles = _angle_dir / "libGLESv2.dylib"
+    if _angle_egl.exists() and _angle_gles.exists():
+        # Copy ANGLE dylibs into the package source so setuptools bundles them
+        _pkg_src = HERE / "src" / "thorvg_cython"
+        for dylib in (_angle_egl, _angle_gles):
+            _dest = _pkg_src / dylib.name
+            if not _dest.exists():
+                shutil.copy2(str(dylib), str(_dest))
+                print(f"[setup.py] Copied ANGLE dylib: {dylib.name} -> {_dest}")
+        extra_link_args.append("-Wl,-rpath,@loader_path")
+        print(f"[setup.py] ANGLE dylibs found, added @loader_path rpath")
+
 elif sys.platform.startswith("win"):
     # -----------------------------------------------------------------------
     #  Windows: link against thorvg static lib.
@@ -426,6 +448,7 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     exclude_package_data={"": ["*.cpp"]},
+    package_data={"thorvg_cython": ["*.dylib"]},
     ext_modules=extensions,
     python_requires=">=3.9",
     zip_safe=False,
