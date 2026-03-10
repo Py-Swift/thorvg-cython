@@ -2,12 +2,15 @@
 """
 setup.py for thorvg-cython.
 
-Platform-aware linking:
-  - iOS   (sys.platform == "ios"):   link via -framework against thorvg.xcframework
-  - macOS (sys.platform == "darwin"): link against libthorvg dylib / static lib
-  - Linux / other:                    link against libthorvg shared lib
+Platform-aware linking against the thorvg shared library:
+  - iOS   (sys.platform == "ios"):   link via libthorvg-1.dylib from XCFramework
+  - macOS (sys.platform == "darwin"): link against libthorvg-1.dylib
+  - Linux / other:                    link against libthorvg-1.so
+  - Windows:                          link against thorvg-1.dll (import lib)
+  - Android:                          link against libthorvg-1.so
 
-Designed to work with cibuildwheel for automated wheel builds.
+The shared library is copied into the package directory and bundled into
+the wheel so that the extension modules can find it at runtime via rpath.
 """
 import os
 import sys
@@ -18,7 +21,7 @@ import subprocess
 #  GPU mode detection
 #
 #  THORVG_GPU env var controls whether the real GlCanvas (gl_canvas.pyx) or
-#  a stub (_gl_canvas.pyx) is compiled.  Future values: "gl", "gles", "angle".
+#  a stub (gl_canvas.py) is compiled.  Future values: "gl", "gles", "angle".
 #  Any non-empty value enables GPU mode.
 # ---------------------------------------------------------------------------
 THORVG_GPU = os.environ.get("THORVG_GPU", "")
@@ -31,18 +34,12 @@ from Cython.Build import cythonize
 
 # ---------------------------------------------------------------------------
 #  Auto-detect SDKROOT on Apple platforms (macOS / iOS)
-#
-#  cibuildwheel and `uv build --python-platform` inject sys.platform:
-#    "darwin" → macOS,  "ios" → iOS device/simulator
-#  We pick the right SDK so callers never need to export SDKROOT manually.
 # ---------------------------------------------------------------------------
 if sys.platform in ("darwin", "ios") and "SDKROOT" not in os.environ:
-    # Map platform → xcrun SDK name
     _SDK_MAP = {
         "darwin": "macosx",
         "ios":    "iphoneos",
     }
-    # PLATFORM_NAME is set by Xcode / xcodebuild; prefer it for simulator
     _xcode_pn = os.environ.get("PLATFORM_NAME", "")
     if "simulator" in _xcode_pn.lower():
         _sdk_name = "iphonesimulator"
@@ -62,18 +59,14 @@ if sys.platform in ("darwin", "ios") and "SDKROOT" not in os.environ:
 # ---------------------------------------------------------------------------
 HERE = Path(__file__).resolve().parent
 THORVG_ROOT = Path(os.environ.get("THORVG_ROOT", HERE / "thorvg"))
-# Ensure THORVG_ROOT is absolute so include / lib paths survive cwd changes
-# (e.g. when python -m build invokes the compiler from a temp directory).
 if not THORVG_ROOT.is_absolute():
     THORVG_ROOT = (HERE / THORVG_ROOT).resolve()
 
-# Where the C API header lives (thorvg_capi.h)
 THORVG_INCLUDE = os.environ.get(
     "THORVG_INCLUDE",
     str(THORVG_ROOT / "inc"),
 )
 
-# Where the built libraries live — check common build dirs
 def _resolve_lib_dir() -> str:
     env_val = os.environ.get("THORVG_LIB_DIR")
     if env_val:
@@ -81,7 +74,6 @@ def _resolve_lib_dir() -> str:
         if not p.is_absolute():
             p = (HERE / p).resolve()
         return str(p)
-    # Prefer builddir_capi (built with -Dbindings=capi)
     for candidate in [
         THORVG_ROOT / "builddir_capi" / "src",
         THORVG_ROOT / "builddir" / "src",
@@ -94,19 +86,16 @@ def _resolve_lib_dir() -> str:
 
 THORVG_LIB_DIR = _resolve_lib_dir()
 
-# Path to the XCFramework (iOS / macOS when using framework)
 THORVG_XCFRAMEWORK = os.environ.get(
     "THORVG_XCFRAMEWORK",
     str(THORVG_ROOT / "output" / "thorvg.xcframework"),
 )
 
-# Path to ANGLE libraries (macOS: .dylib, iOS: .xcframework)
 ANGLE_LIB_DIR = os.environ.get(
     "ANGLE_LIB_DIR",
     str(THORVG_ROOT / "output" / "angle"),
 )
 
-# Also look for the CAPI header inside the thorvg source tree
 THORVG_CAPI_INCLUDE = os.environ.get(
     "THORVG_CAPI_INCLUDE",
     str(THORVG_ROOT / "src" / "bindings" / "capi"),
@@ -122,28 +111,16 @@ print(f"[setup.py] thorvg_capi.h     = {_capi_header}  (exists={_capi_header.exi
 print(f"[setup.py] THORVG_LIB_DIR    = {THORVG_LIB_DIR}  (exists={Path(THORVG_LIB_DIR).exists()})")
 if THORVG_ROOT.exists():
     print(f"[setup.py] THORVG_ROOT ls    = {list(THORVG_ROOT.iterdir())}")
-# --- END DEBUG -------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-#  Platform detection
+#  Platform detection helpers
 # ---------------------------------------------------------------------------
-# sys.platform values:
-#   "ios"    – CPython for iOS (PEP 730, Python 3.13+)
-#   "darwin" – macOS
-#   "linux"  – Linux
-#   "win32"  – Windows
-#   "android"– Android (PEP 738, Python 3.13+)
 PLATFORM = sys.platform
-
-# For cross-compilation via cibuildwheel, _PYTHON_HOST_PLATFORM or
-# ARCHFLAGS may hint at the target.  Also check the Xcode PLATFORM_NAME
-# env var set by Xcode / xcodebuild.
 _xcode_platform = os.environ.get("PLATFORM_NAME", "")
 _host_platform = os.environ.get("_PYTHON_HOST_PLATFORM", "")
 _archflags = os.environ.get("ARCHFLAGS", "")
 
 def _is_ios_build() -> bool:
-    """Detect whether we are cross-compiling for iOS."""
     if PLATFORM == "ios":
         return True
     if "iphone" in _xcode_platform.lower():
@@ -160,7 +137,6 @@ def _is_macos_build() -> bool:
     return False
 
 def _is_android_build() -> bool:
-    """Detect whether we are cross-compiling for Android."""
     if PLATFORM == "android":
         return True
     if "android" in _host_platform.lower():
@@ -168,7 +144,6 @@ def _is_android_build() -> bool:
     return False
 
 def _get_arch() -> str:
-    """Best-effort target architecture."""
     if _archflags:
         for part in _archflags.split():
             if part in ("arm64", "x86_64", "aarch64"):
@@ -182,7 +157,54 @@ def _get_arch() -> str:
     return _plat.machine()
 
 # ---------------------------------------------------------------------------
+#  Package source directory (where we copy the shared lib for bundling)
+# ---------------------------------------------------------------------------
+_PKG_SRC = HERE / "src" / "thorvg_cython"
+
+
+def _bundle_dylib(src_path: Path, dest_dir: Path) -> None:
+    """Copy a shared library into dest_dir for wheel bundling.
+
+    On macOS/iOS this also creates a versioned symlink if the install name
+    references a versioned filename (e.g. libthorvg-1.1.dylib), and fixes
+    the install_name to use @rpath/<basename> so delocate/the loader works.
+    """
+    dest = dest_dir / src_path.name
+    if dest.exists():
+        return
+    # Always follow symlinks (copy the real file)
+    real_src = src_path.resolve()
+    shutil.copy2(str(real_src), str(dest))
+    print(f"[setup.py] Copied {src_path.name} -> {dest}")
+
+    if sys.platform in ("darwin", "ios"):
+        # Read the install_name (LC_ID_DYLIB) from the copied dylib
+        try:
+            out = subprocess.check_output(
+                ["otool", "-D", str(dest)], text=True
+            ).strip().splitlines()
+            if len(out) >= 2:
+                old_id = out[1].strip()
+                # If install name is @rpath/libthorvg-1.1.dylib but the
+                # file is libthorvg-1.dylib, create a symlink from the
+                # versioned name so the loader can resolve it.
+                id_basename = os.path.basename(old_id)
+                if id_basename != src_path.name:
+                    versioned_dest = dest_dir / id_basename
+                    if not versioned_dest.exists():
+                        shutil.copy2(str(dest), str(versioned_dest))
+                        print(f"[setup.py] Created versioned copy: {id_basename}")
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            pass
+
+
+# ---------------------------------------------------------------------------
 #  Build the Extension kwargs per platform
+#
+#  All extensions link against the same shared libthorvg-1.  The shared lib
+#  is copied into the package source directory so setuptools bundles it in
+#  the wheel.  rpath is set to @loader_path (macOS/iOS) or $ORIGIN (Linux)
+#  so the extensions find the bundled dylib at runtime.
 # ---------------------------------------------------------------------------
 include_dirs = [
     THORVG_INCLUDE,
@@ -194,26 +216,14 @@ extra_compile_args = ["-std=c++17"]
 extra_link_args = []
 libraries = []
 library_dirs = []
-# Thorvg static library link args — only the MAIN extension (thorvg.pyx)
-# should link against the static libthorvg.  Sub-extensions (sw_canvas,
-# gl_canvas) resolve thorvg C symbols at runtime from the already-loaded
-# main extension via RTLD_GLOBAL (see __init__.py).
-_thorvg_static_link_args = []
+
 if _is_ios_build():
     # -----------------------------------------------------------------------
-    #  iOS: link against the thorvg.xcframework static lib.
-    #
-    #  The XCFramework has slices like:
-    #    thorvg.xcframework/ios-arm64/libthorvg.a
-    #    thorvg.xcframework/ios-arm64_x86_64-simulator/libthorvg.a
-    #
-    #  Detect simulator vs device using platform.ios_ver() (PEP 730),
-    #  falling back to sysconfig SOABI/MULTIARCH and env vars.
+    #  iOS: link against libthorvg-1.dylib from output dir or XCFramework.
     # -----------------------------------------------------------------------
     arch = _get_arch()
     xcfw = Path(THORVG_XCFRAMEWORK)
 
-    # Detect simulator - same approach as Kivy
     _is_simulator = False
     try:
         from platform import ios_ver
@@ -229,148 +239,125 @@ if _is_ios_build():
         if "simulator" in _xcode_platform.lower() or "simulator" in _host_platform.lower():
             _is_simulator = True
 
-    if _is_simulator:
-        candidates = [
-            xcfw / "ios-arm64_x86_64-simulator",
-            xcfw / f"ios-{arch}-simulator",
-        ]
-    else:
-        candidates = [
-            xcfw / "ios-arm64",
-            xcfw / f"ios-{arch}",
-        ]
+    # Find the dylib
+    _ios_lib_dir = Path(THORVG_LIB_DIR)
+    _ios_dylib = _ios_lib_dir / "libthorvg-1.dylib"
 
-    lib_path = None
-    for c in candidates:
-        static = c / "libthorvg.a"
-        if static.exists():
-            lib_path = str(static)
-            break
+    if not _ios_dylib.exists():
+        # Try XCFramework slices
+        if _is_simulator:
+            candidates = [
+                xcfw / "ios-arm64_x86_64-simulator",
+                xcfw / f"ios-{arch}-simulator",
+            ]
+        else:
+            candidates = [xcfw / "ios-arm64", xcfw / f"ios-{arch}"]
+        for c in candidates:
+            dylib = c / "libthorvg-1.dylib"
+            if dylib.exists():
+                _ios_dylib = dylib
+                _ios_lib_dir = c
+                break
 
-    if lib_path:
-        _thorvg_static_link_args.append(lib_path)
+    if _ios_dylib.exists():
+        _bundle_dylib(_ios_dylib, _PKG_SRC)
+        library_dirs.append(str(_ios_lib_dir))
+        libraries.append("thorvg-1")
+        extra_link_args.append("-Wl,-rpath,@loader_path")
     else:
-        # Fallback: let the linker search
         library_dirs.append(str(xcfw))
         libraries.append("thorvg")
 
-    # iOS needs these system frameworks
-    extra_link_args.extend([
-        "-framework", "Foundation",
-        "-framework", "CoreGraphics",
-    ])
-
-    # Minimum deployment target
+    extra_link_args.extend(["-framework", "Foundation", "-framework", "CoreGraphics"])
     ios_target = os.environ.get("IPHONEOS_DEPLOYMENT_TARGET", "13.0")
     extra_compile_args.append(f"-mios-version-min={ios_target}")
     extra_link_args.append(f"-mios-version-min={ios_target}")
 
 elif _is_macos_build():
     # -----------------------------------------------------------------------
-    #  macOS: link against static lib or dylib.
+    #  macOS: link against libthorvg-1.dylib.
     #
-    #  Priority:
-    #    1. THORVG_LIB_DIR / libthorvg-1.a  (static, CAPI build)
-    #    2. THORVG_LIB_DIR / libthorvg.a    (static)
-    #    3. XCFramework macOS slice
-    #    4. THORVG_LIB_DIR / libthorvg-1.dylib (shared)
-    #    5. System search path
+    #  Search order:
+    #    1. THORVG_LIB_DIR / libthorvg-1.dylib
+    #    2. XCFramework macOS slice
+    #    3. Fallback: system search
     # -----------------------------------------------------------------------
-    arch = _get_arch()
     xcfw = Path(THORVG_XCFRAMEWORK)
+    _lib_dir = Path(THORVG_LIB_DIR)
 
-    local_static_1 = Path(THORVG_LIB_DIR) / "libthorvg-1.a"
-    local_static = Path(THORVG_LIB_DIR) / "libthorvg.a"
+    local_dylib = _lib_dir / "libthorvg-1.dylib"
     macos_slice = xcfw / "macos-arm64_x86_64"
-    macos_static = macos_slice / "libthorvg.a"
-    local_dylib = Path(THORVG_LIB_DIR) / "libthorvg-1.dylib"
+    macos_dylib = macos_slice / "libthorvg-1.dylib"
 
-    if local_static_1.exists():
-        _thorvg_static_link_args.append(str(local_static_1))
-    elif local_static.exists():
-        _thorvg_static_link_args.append(str(local_static))
-    elif macos_static.exists():
-        _thorvg_static_link_args.append(str(macos_static))
-    elif local_dylib.exists():
-        library_dirs.append(THORVG_LIB_DIR)
-        libraries.append("thorvg-1")
-        extra_link_args.append(f"-Wl,-rpath,{THORVG_LIB_DIR}")
+    if local_dylib.exists():
+        _found_dylib = local_dylib
+        _found_dir = _lib_dir
+    elif macos_dylib.exists():
+        _found_dylib = macos_dylib
+        _found_dir = macos_slice
     else:
-        # Fallback: hope the system can find it
+        _found_dylib = None
+        _found_dir = None
+
+    if _found_dylib:
+        _bundle_dylib(_found_dylib, _PKG_SRC)
+        library_dirs.append(str(_found_dir))
+        libraries.append("thorvg-1")
+        extra_link_args.append("-Wl,-rpath,@loader_path")
+    else:
         libraries.append("thorvg")
 
     macos_target = os.environ.get("MACOSX_DEPLOYMENT_TARGET", "11.0")
     extra_compile_args.append(f"-mmacosx-version-min={macos_target}")
     extra_link_args.append(f"-mmacosx-version-min={macos_target}")
 
-    # ANGLE: set rpath so extension can find bundled dylibs at runtime
+    # ANGLE dylibs (for GPU builds)
     _angle_dir = Path(ANGLE_LIB_DIR)
     _angle_egl = _angle_dir / "libEGL.dylib"
     _angle_gles = _angle_dir / "libGLESv2.dylib"
     if _angle_egl.exists() and _angle_gles.exists():
-        # Copy ANGLE dylibs into the package source so setuptools bundles them
-        _pkg_src = HERE / "src" / "thorvg_cython"
         for dylib in (_angle_egl, _angle_gles):
-            _dest = _pkg_src / dylib.name
+            _dest = _PKG_SRC / dylib.name
             if not _dest.exists():
                 shutil.copy2(str(dylib), str(_dest))
                 print(f"[setup.py] Copied ANGLE dylib: {dylib.name} -> {_dest}")
-        extra_link_args.append("-Wl,-rpath,@loader_path")
-        print(f"[setup.py] ANGLE dylibs found, added @loader_path rpath")
+        print(f"[setup.py] ANGLE dylibs found, @loader_path rpath already set")
 
 elif sys.platform.startswith("win"):
     # -----------------------------------------------------------------------
-    #  Windows: link against thorvg static lib.
-    #
-    #  build_windows.bat produces:
-    #    output/windows_x64/thorvg.lib   (from meson static build)
-    #  or the raw meson output:
-    #    builddir_win/src/thorvg-1.lib
-    #    builddir_win/src/libthorvg-1.a  (MinGW)
+    #  Windows: link against thorvg-1.dll via import lib.
     #
     #  Search order:
-    #    1. THORVG_LIB_DIR / thorvg.lib       (build_windows.bat output)
-    #    2. THORVG_LIB_DIR / thorvg-1.lib     (raw meson MSVC output)
-    #    3. THORVG_LIB_DIR / libthorvg-1.a    (raw meson MinGW output)
-    #    4. output/windows_x64/thorvg.lib     (default build_windows.bat)
-    #    5. Fallback: let linker search for "thorvg"
+    #    1. THORVG_LIB_DIR / thorvg-1.dll + thorvg-1.lib
+    #    2. output/windows_x64/
+    #    3. Fallback: linker search
     # -----------------------------------------------------------------------
     _lib_dir = Path(THORVG_LIB_DIR)
-    _win_static = _lib_dir / "thorvg.lib"
-    _win_meson = _lib_dir / "thorvg-1.lib"
-    _win_mingw = _lib_dir / "libthorvg-1.a"
-    _win_default = THORVG_ROOT / "output" / "windows_x64" / "thorvg.lib"
+    _win_dll = _lib_dir / "thorvg-1.dll"
+    _win_default_dir = THORVG_ROOT / "output" / "windows_x64"
 
-    if _win_static.exists():
-        library_dirs.append(THORVG_LIB_DIR)
-        libraries.append("thorvg")
-    elif _win_meson.exists():
-        library_dirs.append(THORVG_LIB_DIR)
+    if _win_dll.exists():
+        _found_dir = _lib_dir
+    elif (_win_default_dir / "thorvg-1.dll").exists():
+        _found_dir = _win_default_dir
+    else:
+        _found_dir = None
+
+    if _found_dir:
+        _bundle_dylib(_found_dir / "thorvg-1.dll", _PKG_SRC)
+        library_dirs.append(str(_found_dir))
         libraries.append("thorvg-1")
-    elif _win_mingw.exists():
-        library_dirs.append(THORVG_LIB_DIR)
-        libraries.append("thorvg-1")
-    elif _win_default.exists():
-        library_dirs.append(str(_win_default.parent))
-        libraries.append("thorvg")
     else:
         library_dirs.append(THORVG_LIB_DIR)
         libraries.append("thorvg")
 
-    extra_compile_args = ["/std:c++17", "/EHsc", "/DTVG_STATIC"]
+    extra_compile_args = ["/std:c++17", "/EHsc"]
 
 elif _is_android_build():
     # -----------------------------------------------------------------------
-    #  Android: link against static libthorvg.a
-    #
-    #  THORVG_LIB_DIR is the base output dir (e.g. thorvg/output).
-    #  Detect the target arch from _PYTHON_HOST_PLATFORM (set by the build
-    #  frontend / cibuildwheel when cross-compiling) or fall back to
-    #  sysconfig.get_platform(), which returns the target platform string
-    #  (e.g. "android-21-x86_64") when running with the Android Python
-    #  interpreter (e.g. in local development without _PYTHON_HOST_PLATFORM).
+    #  Android: link against libthorvg-1.so.
     # -----------------------------------------------------------------------
-    _android_arch = "aarch64"  # default
+    _android_arch = "aarch64"
     _host_plat = os.environ.get("_PYTHON_HOST_PLATFORM", "") or sysconfig.get_platform()
     if "x86_64" in _host_plat:
         _android_arch = "x86_64"
@@ -379,89 +366,53 @@ elif _is_android_build():
 
     _lib_dir = Path(THORVG_LIB_DIR) / f"android_{_android_arch}"
     if not _lib_dir.exists():
-        # Fallback: maybe THORVG_LIB_DIR already includes the arch subdir
         _lib_dir = Path(THORVG_LIB_DIR)
 
-    _android_static = _lib_dir / "libthorvg.a"
-    _android_static_1 = _lib_dir / "libthorvg-1.a"
-
+    _android_so = _lib_dir / "libthorvg-1.so"
     print(f"[setup.py] Android arch={_android_arch}, _host_plat={_host_plat!r}, lib_dir={_lib_dir}")
 
-    if _android_static.exists():
-        _thorvg_static_link_args.append(str(_android_static))
-    elif _android_static_1.exists():
-        _thorvg_static_link_args.append(str(_android_static_1))
+    if _android_so.exists():
+        _bundle_dylib(_android_so, _PKG_SRC)
+        library_dirs.append(str(_lib_dir))
+        libraries.append("thorvg-1")
+        extra_link_args.append("-Wl,-rpath,$ORIGIN")
     else:
         library_dirs.append(str(_lib_dir))
         libraries.append("thorvg")
 
 else:
     # -----------------------------------------------------------------------
-    #  Linux / other: link against static libthorvg.a or shared .so
-    #
-    #  Priority:
-    #    1. THORVG_LIB_DIR / libthorvg.a       (build_linux.sh output)
-    #    2. THORVG_LIB_DIR / libthorvg-1.a     (raw meson output)
-    #    3. Fallback: linker search with -Wl,-rpath
+    #  Linux / other: link against libthorvg-1.so.
     # -----------------------------------------------------------------------
     _lib_dir = Path(THORVG_LIB_DIR)
-    _linux_static = _lib_dir / "libthorvg.a"
-    _linux_static_1 = _lib_dir / "libthorvg-1.a"
+    _linux_so = _lib_dir / "libthorvg-1.so"
 
-    if _linux_static.exists():
-        _thorvg_static_link_args.append(str(_linux_static))
-    elif _linux_static_1.exists():
-        _thorvg_static_link_args.append(str(_linux_static_1))
+    if _linux_so.exists():
+        _bundle_dylib(_linux_so, _PKG_SRC)
+        library_dirs.append(str(_lib_dir))
+        libraries.append("thorvg-1")
+        extra_link_args.append("-Wl,-rpath,$ORIGIN")
     else:
         library_dirs.append(THORVG_LIB_DIR)
         libraries.append("thorvg")
         extra_link_args.append(f"-Wl,-rpath,{THORVG_LIB_DIR}")
 
-# Append C++ standard library (macOS/iOS use libc++, Linux links libstdc++ automatically)
+# C++ standard library (macOS/iOS use libc++, Linux links libstdc++ automatically)
 if sys.platform in ("darwin", "ios"):
     extra_link_args.append("-lc++")
 
 # ---------------------------------------------------------------------------
-#  Extension definition
+#  Extension definition — all extensions share the same link kwargs
 # ---------------------------------------------------------------------------
+print(f"[setup.py] libraries={libraries}, library_dirs={library_dirs}")
+print(f"[setup.py] extra_link_args={extra_link_args}")
 
-# ---------------------------------------------------------------------------
-#  Extension kwargs: main vs sub-extensions
-#
-#  When libthorvg is statically linked, only the MAIN extension (thorvg.pyx)
-#  carries the library.  Sub-extensions (sw_canvas, gl_canvas) resolve thorvg
-#  C symbols at runtime from the already-loaded main extension.  This avoids
-#  each .so having a private copy of libthorvg with separate global state
-#  (e.g. the engineInit counter), which would cause tvg_swcanvas_create() to
-#  return NULL even after tvg_engine_init() has been called.
-#
-#  __init__.py sets RTLD_GLOBAL before importing thorvg.so so that its
-#  symbols are globally visible to subsequent dlopen() calls.
-# ---------------------------------------------------------------------------
-
-# Main extension: links against libthorvg (static or shared)
-_main_ext_kwargs = dict(
+_ext_kwargs = dict(
     include_dirs=include_dirs,
     library_dirs=library_dirs,
     libraries=libraries,
     extra_compile_args=extra_compile_args,
-    extra_link_args=extra_link_args + _thorvg_static_link_args,
-    language="c++",
-)
-
-# Sub-extensions: do NOT link libthorvg; resolve C symbols at runtime.
-_sub_extra_link = list(extra_link_args)  # copy base link args (c++ stdlib, rpath, etc.)
-if sys.platform in ("darwin", "ios") or _is_ios_build():
-    # macOS / iOS linker requires explicit opt-in for unresolved symbols
-    _sub_extra_link.extend(["-undefined", "dynamic_lookup"])
-# Linux / Android: shared objects allow unresolved symbols by default
-
-_sub_ext_kwargs = dict(
-    include_dirs=include_dirs,
-    library_dirs=library_dirs,
-    libraries=libraries,
-    extra_compile_args=extra_compile_args,
-    extra_link_args=_sub_extra_link,
+    extra_link_args=extra_link_args,
     language="c++",
 )
 
@@ -469,28 +420,28 @@ _ext_modules = [
     Extension(
         name="thorvg_cython.thorvg",
         sources=["src/thorvg_cython/thorvg.pyx"],
-        **_main_ext_kwargs,
+        **_ext_kwargs,
     ),
     Extension(
         name="thorvg_cython.sw_canvas",
         sources=["src/thorvg_cython/sw_canvas.pyx"],
-        **_sub_ext_kwargs,
+        **_ext_kwargs,
     ),
 ]
 
-# GPU mode: compile gl_canvas.pyx → gl_canvas.so (overrides gl_canvas.py stub)
+# GPU mode: compile gl_canvas.pyx -> gl_canvas.so (overrides gl_canvas.py stub)
 # No GPU:   gl_canvas.py (plain Python stub) is used at import time
 if GPU_MODE:
     _ext_modules.append(
         Extension(
             name="thorvg_cython.gl_canvas",
             sources=["src/thorvg_cython/gl_canvas.pyx"],
-            **_sub_ext_kwargs,
+            **_ext_kwargs,
         ),
     )
-    print(f"[setup.py] GPU_MODE enabled (THORVG_GPU={THORVG_GPU!r}) — compiling real GlCanvas")
+    print(f"[setup.py] GPU_MODE enabled (THORVG_GPU={THORVG_GPU!r}) -- compiling real GlCanvas")
 else:
-    print("[setup.py] GPU_MODE disabled — gl_canvas.py stub will be used")
+    print("[setup.py] GPU_MODE disabled -- gl_canvas.py stub will be used")
 
 extensions = cythonize(
     _ext_modules,
@@ -517,7 +468,7 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     exclude_package_data={"": ["*.cpp"], **({"thorvg_cython": ["gl_canvas.py"]} if GPU_MODE else {})},
-    package_data={"thorvg_cython": ["*.dylib"]},
+    package_data={"thorvg_cython": ["*.dylib", "*.so", "*.dll"]},
     ext_modules=extensions,
     python_requires=">=3.9",
     zip_safe=False,

@@ -31,7 +31,7 @@ It mirrors the `thorvg-python` API surface while delivering native-extension per
 # 1. Build ThorVG
 cd /path/to/thorvg
 export SDKROOT=$(xcrun --show-sdk-path)
-meson setup builddir --buildtype=release --default-library=static -Dbindings=capi -Dloaders=svg,lottie,ttf
+meson setup builddir --buildtype=release --default-library=shared -Dbindings=capi -Dloaders=svg,lottie,ttf
 ninja -C builddir
 
 # 2. Build the wheel

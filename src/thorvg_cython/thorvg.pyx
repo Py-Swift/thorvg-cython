@@ -1112,36 +1112,3 @@ cdef class Accessor:
         cdef bytes b = name.encode("utf-8")
         return tvg.tvg_accessor_generate_id(b)
 
-
-# ═══════════════════════════════════════════════════════════════════
-#  Canvas-creation helpers (called by sub-extensions via cimport)
-#
-#  These thin wrappers keep all C-API symbol references inside
-#  thorvg.so.  Sub-extensions (sw_canvas.so, gl_canvas.so) call
-#  through Cython's __pyx_capi__ function-pointer table, which is
-#  resolved at Python import time — no C-level link dependency on
-#  libthorvg required.
-# ═══════════════════════════════════════════════════════════════════
-
-cdef tvg.Tvg_Canvas _create_sw_canvas(int op):
-    return tvg.tvg_swcanvas_create(<tvg.Tvg_Engine_Option>op)
-
-
-cdef tvg.Tvg_Result _set_sw_target(tvg.Tvg_Canvas c, uint32_t* buf,
-                                    uint32_t stride, uint32_t w, uint32_t h,
-                                    int cs):
-    return tvg.tvg_swcanvas_set_target(c, buf, stride, w, h,
-                                       <tvg.Tvg_Colorspace>cs)
-
-
-cdef tvg.Tvg_Canvas _create_gl_canvas(int op):
-    return tvg.tvg_glcanvas_create(<tvg.Tvg_Engine_Option>op)
-
-
-cdef tvg.Tvg_Result _set_gl_target(tvg.Tvg_Canvas c, void* display,
-                                    void* surface, void* context,
-                                    int32_t fbo_id, uint32_t w, uint32_t h,
-                                    int cs):
-    return tvg.tvg_glcanvas_set_target(c, display, surface, context,
-                                       fbo_id, w, h,
-                                       <tvg.Tvg_Colorspace>cs)

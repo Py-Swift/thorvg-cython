@@ -17,7 +17,7 @@ set "PATH=%PATH:C:\Strawberry\c\bin;=%"
 set "PATH=%PATH:C:\Strawberry\perl\site\bin;=%"
 set "PATH=%PATH:C:\Strawberry\perl\bin;=%"
 
-set MESON_COMMON=--vsenv --buildtype=release --default-library=static -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp -Dengines=sw,gl
+set MESON_COMMON=--vsenv --buildtype=release --default-library=shared -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp -Dengines=sw,gl
 
 set ARCH=%2
 if "%ARCH%"=="" set ARCH=x64
@@ -68,23 +68,21 @@ if errorlevel 1 (
 
 if not exist "%_OUT_DIR%" mkdir "%_OUT_DIR%"
 
-REM Try all known meson static lib output names
-echo Searching for static library in %_BUILD_DIR%\src\ ...
-dir "%_BUILD_DIR%\src\*.lib" "%_BUILD_DIR%\src\*.a" 2>nul
+REM Try known meson shared lib output names
+echo Searching for shared library in %_BUILD_DIR%\src\ ...
+dir "%_BUILD_DIR%\src\*.dll" "%_BUILD_DIR%\src\*.lib" 2>nul
 
-copy /y "%_BUILD_DIR%\src\libthorvg-1.a" "%_OUT_DIR%\thorvg.lib" >nul 2>&1
-if not exist "%_OUT_DIR%\thorvg.lib" (
-    copy /y "%_BUILD_DIR%\src\thorvg-1.lib" "%_OUT_DIR%\thorvg.lib" >nul 2>&1
-)
-if not exist "%_OUT_DIR%\thorvg.lib" (
-    copy /y "%_BUILD_DIR%\src\libthorvg.a" "%_OUT_DIR%\thorvg.lib" >nul 2>&1
-)
-if not exist "%_OUT_DIR%\thorvg.lib" (
-    copy /y "%_BUILD_DIR%\src\thorvg.lib" "%_OUT_DIR%\thorvg.lib" >nul 2>&1
-)
-if not exist "%_OUT_DIR%\thorvg.lib" (
-    echo FAILED: Could not find static library output in %_BUILD_DIR%\src\
+REM Copy DLL (runtime) and import lib (link-time)
+copy /y "%_BUILD_DIR%\src\thorvg-1.dll" "%_OUT_DIR%\thorvg-1.dll" >nul 2>&1
+if not exist "%_OUT_DIR%\thorvg-1.dll" (
+    echo FAILED: Could not find thorvg-1.dll in %_BUILD_DIR%\src\
     exit /b 1
+)
+
+REM Copy import library (.lib) for linking
+copy /y "%_BUILD_DIR%\src\thorvg-1.lib" "%_OUT_DIR%\thorvg-1.lib" >nul 2>&1
+if not exist "%_OUT_DIR%\thorvg-1.lib" (
+    echo WARNING: Could not find import lib thorvg-1.lib — linker may need DLL directly
 )
 
 echo ^<^<^< Done: windows_%_ARCH%
@@ -95,8 +93,8 @@ exit /b 0
 echo.
 echo === Build Complete ===
 echo Output: %OUTPUT_DIR%
-if exist "%OUTPUT_DIR%\windows_x64\thorvg.lib" echo   x64:   %OUTPUT_DIR%\windows_x64\thorvg.lib
-if exist "%OUTPUT_DIR%\windows_arm64\thorvg.lib" echo   arm64: %OUTPUT_DIR%\windows_arm64\thorvg.lib
+if exist "%OUTPUT_DIR%\windows_x64\thorvg-1.dll" echo   x64:   %OUTPUT_DIR%\windows_x64\thorvg-1.dll
+if exist "%OUTPUT_DIR%\windows_arm64\thorvg-1.dll" echo   arm64: %OUTPUT_DIR%\windows_arm64\thorvg-1.dll
 exit /b 0
 
 :fail

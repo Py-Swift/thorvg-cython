@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Build thorvg for Linux (native architecture)
-# Produces a static library at output/linux_<arch>/libthorvg.a
+# Produces a shared library at output/linux_<arch>/libthorvg-1.so
 #
 # Usage:  bash build_linux.sh <thorvg_source_dir>
 
@@ -11,7 +11,7 @@ cd "$ROOT_DIR"
 ROOT_DIR="$(pwd)"
 BUILD_ROOT="$ROOT_DIR/build_linux"
 OUTPUT_DIR="$ROOT_DIR/output"
-MESON_COMMON="--buildtype=release --default-library=static -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp -Dengines=sw,gl"
+MESON_COMMON="--buildtype=release --default-library=shared -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp -Dengines=sw,gl"
 
 ARCH="$(uname -m)"
 
@@ -36,9 +36,9 @@ ninja -C "$BUILD_DIR" 2>&1
 echo "<<< Done: linux_$ARCH"
 echo ""
 
-# Copy output
+# Copy output (shared lib + symlinks)
 mkdir -p "$OUT_DIR"
-cp "$BUILD_DIR/src/libthorvg-1.a" "$OUT_DIR/libthorvg.a"
+cp -P "$BUILD_DIR/src/libthorvg-1.so"* "$OUT_DIR/"
 
 echo "=== Build Complete ==="
-echo "Static library: $OUT_DIR/libthorvg.a"
+echo "Shared library: $OUT_DIR/libthorvg-1.so"

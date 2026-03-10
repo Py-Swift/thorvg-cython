@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Build thorvg for iOS device and iOS Simulator
-# Produces static libraries and an XCFramework (iOS only, no macOS)
+# Produces shared libraries and an XCFramework (iOS only, no macOS)
 #
 # Usage:  bash build_ios.sh <thorvg_source_dir>
 
@@ -11,7 +11,7 @@ cd "$ROOT_DIR"
 ROOT_DIR="$(pwd)"
 BUILD_ROOT="$ROOT_DIR/build_ios"
 OUTPUT_DIR="$ROOT_DIR/output"
-MESON_COMMON="--buildtype=release --default-library=static -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp,opengl_es -Dengines=sw,gl"
+MESON_COMMON="--buildtype=release --default-library=shared -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp,opengl_es -Dengines=sw,gl"
 
 echo "=== ThorVG iOS Build ==="
 echo "Root: $ROOT_DIR"
@@ -47,14 +47,14 @@ echo ">>> Creating fat libraries with lipo..."
 
 # iOS device (single arch, just copy)
 mkdir -p "$OUTPUT_DIR/ios_arm64"
-cp "$BUILD_ROOT/ios_arm64/src/libthorvg-1.a" "$OUTPUT_DIR/ios_arm64/libthorvg.a"
+cp "$BUILD_ROOT/ios_arm64/src/libthorvg-1.dylib" "$OUTPUT_DIR/ios_arm64/libthorvg-1.dylib"
 
 # iOS Simulator fat (arm64 + x86_64)
 mkdir -p "$OUTPUT_DIR/ios_sim_fat"
 lipo -create \
-    "$BUILD_ROOT/ios_sim_arm64/src/libthorvg-1.a" \
-    "$BUILD_ROOT/ios_sim_x86_64/src/libthorvg-1.a" \
-    -output "$OUTPUT_DIR/ios_sim_fat/libthorvg.a"
+    "$BUILD_ROOT/ios_sim_arm64/src/libthorvg-1.dylib" \
+    "$BUILD_ROOT/ios_sim_x86_64/src/libthorvg-1.dylib" \
+    -output "$OUTPUT_DIR/ios_sim_fat/libthorvg-1.dylib"
 
 echo "<<< Fat libraries created"
 echo ""
@@ -63,9 +63,9 @@ echo ""
 echo ">>> Creating XCFramework..."
 
 xcodebuild -create-xcframework \
-    -library "$OUTPUT_DIR/ios_arm64/libthorvg.a" \
+    -library "$OUTPUT_DIR/ios_arm64/libthorvg-1.dylib" \
     -headers "$ROOT_DIR/inc" \
-    -library "$OUTPUT_DIR/ios_sim_fat/libthorvg.a" \
+    -library "$OUTPUT_DIR/ios_sim_fat/libthorvg-1.dylib" \
     -headers "$ROOT_DIR/inc" \
     -output "$OUTPUT_DIR/thorvg.xcframework"
 
@@ -74,5 +74,5 @@ echo "=== Build Complete ==="
 echo "XCFramework: $OUTPUT_DIR/thorvg.xcframework"
 echo ""
 echo "Individual libraries:"
-echo "  iOS arm64:           $OUTPUT_DIR/ios_arm64/libthorvg.a"
-echo "  iOS Simulator (fat): $OUTPUT_DIR/ios_sim_fat/libthorvg.a"
+echo "  iOS arm64:           $OUTPUT_DIR/ios_arm64/libthorvg-1.dylib"
+echo "  iOS Simulator (fat): $OUTPUT_DIR/ios_sim_fat/libthorvg-1.dylib"

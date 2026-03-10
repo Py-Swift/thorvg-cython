@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Build thorvg for Android (aarch64 and x86_64)
-# Produces static libraries at output/android_aarch64 and output/android_x86_64
+# Produces shared libraries at output/android_aarch64 and output/android_x86_64
 #
 # Usage:  bash build_android.sh <thorvg_source_dir> [ndk_path] [api_level]
 #
@@ -16,7 +16,7 @@ cd "$ROOT_DIR"
 ROOT_DIR="$(pwd)"
 BUILD_ROOT="$ROOT_DIR/build_android"
 OUTPUT_DIR="$ROOT_DIR/output"
-MESON_COMMON="--buildtype=release --default-library=static -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp,opengl_es -Dengines=sw,gl"
+MESON_COMMON="--buildtype=release --default-library=shared -Dthreads=true -Dbindings=capi -Dloaders=svg,lottie,ttf -Dextra=lottie_exp,opengl_es -Dengines=sw,gl"
 
 # Resolve NDK path
 NDK="${2:-${ANDROID_NDK_HOME:-${ANDROID_NDK:-}}}"
@@ -93,11 +93,11 @@ build_target "android_x86_64"  "$CROSS_DIR/android_x86_64.txt"
 
 # ---------- copy outputs ----------
 mkdir -p "$OUTPUT_DIR/android_aarch64"
-cp "$BUILD_ROOT/android_aarch64/src/libthorvg-1.a" "$OUTPUT_DIR/android_aarch64/libthorvg.a"
+cp "$BUILD_ROOT/android_aarch64/src/libthorvg-1.so" "$OUTPUT_DIR/android_aarch64/libthorvg-1.so"
 
 mkdir -p "$OUTPUT_DIR/android_x86_64"
-cp "$BUILD_ROOT/android_x86_64/src/libthorvg-1.a" "$OUTPUT_DIR/android_x86_64/libthorvg.a"
+cp "$BUILD_ROOT/android_x86_64/src/libthorvg-1.so" "$OUTPUT_DIR/android_x86_64/libthorvg-1.so"
 
 echo "=== Build Complete ==="
-echo "  Android aarch64: $OUTPUT_DIR/android_aarch64/libthorvg.a"
-echo "  Android x86_64:  $OUTPUT_DIR/android_x86_64/libthorvg.a"
+echo "  Android aarch64: $OUTPUT_DIR/android_aarch64/libthorvg-1.so"
+echo "  Android x86_64:  $OUTPUT_DIR/android_x86_64/libthorvg-1.so"
