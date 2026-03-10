@@ -47,13 +47,8 @@ jobs:
         uv tool install cibuildwheel
         brew install meson
 
-    - name: Download ANGLE
-      run: bash tools/thorvg_scripts/download_angle.sh macos-universal thorvg/output
-
     - name: Build wheels
       run: cibuildwheel --platform macos --archs "x86_64 arm64 universal2" --output-dir wheelhouse
-      env:
-        ANGLE_LIB_DIR: thorvg/output/angle
 
     - uses: actions/upload-artifact@v4
       with:
@@ -74,9 +69,6 @@ jobs:
         uv tool install cibuildwheel
         brew install meson
         brew install ninja
-
-    - name: Download ANGLE
-      run: bash tools/thorvg_scripts/download_angle.sh ios thorvg/output
 
     - name: Build wheels
       run: cibuildwheel --platform ios --archs "arm64_iphoneos arm64_iphonesimulator x86_64_iphonesimulator" --output-dir wheelhouse
@@ -106,7 +98,7 @@ jobs:
         sudo apt-get update && sudo apt-get install -y meson ninja-build
 
     - name: Build wheels
-      run: cibuildwheel --platform android --archs "arm64-v8a x86_64" --output-dir wheelhouse
+      run: cibuildwheel --platform android --archs "arm64_v8a x86_64" --output-dir wheelhouse
       env:
         CIBW_BUILD: "cp313-* cp314-*"
 
