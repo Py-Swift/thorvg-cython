@@ -35,13 +35,16 @@ Environment variable overrides
 from __future__ import annotations
 
 import argparse
+import io
 import os
 import platform as _plat
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import textwrap
+import urllib.request
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -91,6 +94,37 @@ def _ensure_tool(name: str) -> None:
         _run([sys.executable, "-m", "pip", "install", name])
     else:
         sys.exit(f"ERROR: '{name}' not found on PATH")
+
+
+def _download_thorvg_source(version: str, dest: Path) -> None:
+    """Download and extract the thorvg release tarball into *dest*.
+
+    The tarball from GitHub unpacks as ``thorvg-<version>/``.  We rename
+    it to *dest* so callers can rely on a stable path.
+    """
+    if dest.is_dir():
+        print(f"[download] {dest} already exists – skipping download")
+        return
+
+    url = (
+        f"https://github.com/thorvg/thorvg/archive/"
+        f"refs/tags/v{version}.tar.gz"
+    )
+    parent = dest.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    extracted = parent / f"thorvg-{version}"
+
+    print(f"[download] Fetching thorvg v{version} …")
+    print(f"  {url}")
+    data = urllib.request.urlopen(url).read()
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tf:
+        tf.extractall(path=str(parent))
+
+    if not extracted.is_dir():
+        sys.exit(f"ERROR: expected directory {extracted} after extraction")
+
+    extracted.rename(dest)
+    print(f"[download] thorvg source ready at {dest}")
 
 
 def _validate_gpu(platform: str, gpu: str) -> None:
@@ -690,6 +724,14 @@ def main() -> None:
             help="Path to thorvg source (default: THORVG_ROOT env or ../thorvg)",
         )
         p.add_argument(
+            "--version", default=None, dest="thorvg_version",
+            help=(
+                "ThorVG release version (e.g. 1.0.1).  When supplied and "
+                "--thorvg-root does not yet exist, the source tarball is "
+                "downloaded and extracted automatically."
+            ),
+        )
+        p.add_argument(
             "--gpu", default=None,
             choices=["gl", "gles", "angle", "metal", ""],
             help="GPU backend (default: THORVG_GPU env var, or disabled)",
@@ -757,6 +799,14 @@ def main() -> None:
             root = Path(env_root).resolve()
         else:
             root = SCRIPT_DIR.parent / "thorvg"
+
+    # --- auto-download when --version is given and root is missing ---
+    version = getattr(args, "thorvg_version", None) or os.environ.get(
+        "THORVG_VERSION", ""
+    )
+    if not root.is_dir() and version:
+        _download_thorvg_source(version, root)
+
     if not root.is_dir():
         sys.exit(f"ERROR: thorvg root not found: {root}")
 
