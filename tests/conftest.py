@@ -1,4 +1,8 @@
 """Shared fixtures for thorvg-cython tests."""
+from preload import ensure_libthorvg
+
+ensure_libthorvg()  # must run before any thorvg_cython import
+
 import pytest
 from thorvg_cython import Engine, SwCanvas, Colorspace
 
