@@ -334,13 +334,6 @@ cdef class Paint:
     def get_visible(self):
         return tvg.tvg_paint_get_visible(self._p)
 
-    # -- id --
-    def get_id(self):
-        return tvg.tvg_paint_get_id(self._p)
-
-    def set_id(self, uint32_t id):
-        return Result(tvg.tvg_paint_set_id(self._p, id))
-
     # -- transforms --
     def scale(self, float factor):
         return Result(tvg.tvg_paint_scale(self._p, factor))
@@ -948,7 +941,7 @@ cdef class Text(Paint):
 
     def get_text_metrics(self):
         cdef tvg.Tvg_Text_Metrics m
-        cdef tvg.Tvg_Result r = tvg.tvg_text_get_text_metrics(self._p, &m)
+        cdef tvg.Tvg_Result r = tvg.tvg_text_get_metrics(self._p, &m)
         return Result(r), TextMetrics(m.ascent, m.descent, m.linegap, m.advance)
 
     @staticmethod

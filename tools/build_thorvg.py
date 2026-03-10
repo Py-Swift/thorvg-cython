@@ -40,8 +40,10 @@ import platform as _plat
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import textwrap
+import urllib.request
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -91,6 +93,42 @@ def _ensure_tool(name: str) -> None:
         _run([sys.executable, "-m", "pip", "install", name])
     else:
         sys.exit(f"ERROR: '{name}' not found on PATH")
+
+
+def _download_thorvg_source(version: str, dest: Path) -> None:
+    """Download and extract the thorvg release tarball into *dest*.
+
+    The tarball from GitHub unpacks as ``thorvg-<version>/``.  We rename
+    it to *dest* so callers can rely on a stable path.
+    """
+    if dest.is_dir():
+        print(f"[download] {dest} already exists – skipping download")
+        return
+
+    url = (
+        f"https://github.com/thorvg/thorvg/archive/"
+        f"refs/tags/v{version}.tar.gz"
+    )
+    parent = dest.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    extracted = parent / f"thorvg-{version}"
+
+    print(f"[download] Fetching thorvg v{version} …")
+    print(f"  {url}")
+    resp = urllib.request.urlopen(url, timeout=120)
+    with tarfile.open(fileobj=resp, mode="r|gz") as tf:
+        for member in tf:
+            # Guard against path traversal
+            resolved = (parent / member.name).resolve()
+            if not str(resolved).startswith(str(parent.resolve())):
+                raise RuntimeError(f"Unsafe tar member: {member.name}")
+            tf.extract(member, path=str(parent))
+
+    if not extracted.is_dir():
+        sys.exit(f"ERROR: expected directory {extracted} after extraction")
+
+    extracted.rename(dest)
+    print(f"[download] thorvg source ready at {dest}")
 
 
 def _validate_gpu(platform: str, gpu: str) -> None:
@@ -205,7 +243,8 @@ def build_linux(root: Path, gpu: str) -> None:
 
     out_dir.mkdir(parents=True, exist_ok=True)
     for f in build_dir.glob("src/libthorvg-1.so*"):
-        shutil.copy2(str(f), str(out_dir / f.name))
+        if f.is_file():
+            shutil.copy2(str(f), str(out_dir / f.name))
 
     print("=== Build Complete ===")
     print(f"Shared library: {out_dir / 'libthorvg-1.so'}")
@@ -689,6 +728,14 @@ def main() -> None:
             help="Path to thorvg source (default: THORVG_ROOT env or ../thorvg)",
         )
         p.add_argument(
+            "--version", default=None, dest="thorvg_version",
+            help=(
+                "ThorVG release version (e.g. 1.0.1).  When supplied and "
+                "--thorvg-root does not yet exist, the source tarball is "
+                "downloaded and extracted automatically."
+            ),
+        )
+        p.add_argument(
             "--gpu", default=None,
             choices=["gl", "gles", "angle", "metal", ""],
             help="GPU backend (default: THORVG_GPU env var, or disabled)",
@@ -756,6 +803,14 @@ def main() -> None:
             root = Path(env_root).resolve()
         else:
             root = SCRIPT_DIR.parent / "thorvg"
+
+    # --- auto-download when --version is given and root is missing ---
+    version = getattr(args, "thorvg_version", None) or os.environ.get(
+        "THORVG_VERSION", ""
+    )
+    if not root.is_dir() and version:
+        _download_thorvg_source(version, root)
+
     if not root.is_dir():
         sys.exit(f"ERROR: thorvg root not found: {root}")
 

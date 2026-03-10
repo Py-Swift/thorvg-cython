@@ -252,11 +252,15 @@ if _is_ios_build():
     _ios_fw_dylib = None
     _ios_fw_dir = None
 
-    # Try THORVG_LIB_DIR first (direct build output with framework)
-    _direct_fw = Path(THORVG_LIB_DIR) / "thorvg.framework" / "thorvg"
-    if _direct_fw.exists():
-        _ios_fw_dylib = _direct_fw
-        _ios_fw_dir = _direct_fw.parent
+    # Try THORVG_LIB_DIR first (direct build output with framework).
+    # Only for device builds — THORVG_LIB_DIR typically points to the
+    # device (arm64) output and would be the wrong architecture for
+    # simulator (x86_64) builds.
+    if not _is_simulator:
+        _direct_fw = Path(THORVG_LIB_DIR) / "thorvg.framework" / "thorvg"
+        if _direct_fw.exists():
+            _ios_fw_dylib = _direct_fw
+            _ios_fw_dir = _direct_fw.parent
 
     if not _ios_fw_dylib:
         # Search xcframework slices

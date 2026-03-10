@@ -204,12 +204,6 @@ def test_paint_set_get_transform():
     assert abs(m2.e13 - 10.0) < 0.001
 
 
-def test_paint_id():
-    s = Shape()
-    assert s.set_id(42) == Result.SUCCESS
-    assert s.get_id() == 42
-
-
 def test_paint_type():
     s = Shape()
     r, t = s.get_type()
