@@ -219,7 +219,16 @@ library_dirs = []
 
 if _is_ios_build():
     # -----------------------------------------------------------------------
-    #  iOS: link against libthorvg-1.dylib from output dir or XCFramework.
+    #  iOS: link against the thorvg dynamic framework from the XCFramework.
+    #
+    #  At runtime the dylib lives at:
+    #    App.app/Frameworks/thorvg.framework/thorvg
+    #  with install name @rpath/thorvg.framework/thorvg.
+    #  Xcode sets LD_RUNPATH_SEARCH_PATHS = @executable_path/Frameworks
+    #  so extensions find it via @rpath.
+    #
+    #  The dylib is NOT bundled in the wheel — it ships via the .xcframework
+    #  embedded in the Xcode project.
     # -----------------------------------------------------------------------
     arch = _get_arch()
     xcfw = Path(THORVG_XCFRAMEWORK)
@@ -239,34 +248,55 @@ if _is_ios_build():
         if "simulator" in _xcode_platform.lower() or "simulator" in _host_platform.lower():
             _is_simulator = True
 
-    # Find the dylib
-    _ios_lib_dir = Path(THORVG_LIB_DIR)
-    _ios_dylib = _ios_lib_dir / "libthorvg-1.dylib"
+    # Locate the framework inside the xcframework
+    _ios_fw_dylib = None
+    _ios_fw_dir = None
 
-    if not _ios_dylib.exists():
-        # Try XCFramework slices
+    # Try THORVG_LIB_DIR first (direct build output with framework)
+    _direct_fw = Path(THORVG_LIB_DIR) / "thorvg.framework" / "thorvg"
+    if _direct_fw.exists():
+        _ios_fw_dylib = _direct_fw
+        _ios_fw_dir = _direct_fw.parent
+
+    if not _ios_fw_dylib:
+        # Search xcframework slices
         if _is_simulator:
-            candidates = [
+            slice_candidates = [
                 xcfw / "ios-arm64_x86_64-simulator",
                 xcfw / f"ios-{arch}-simulator",
             ]
         else:
-            candidates = [xcfw / "ios-arm64", xcfw / f"ios-{arch}"]
-        for c in candidates:
-            dylib = c / "libthorvg-1.dylib"
-            if dylib.exists():
-                _ios_dylib = dylib
-                _ios_lib_dir = c
+            slice_candidates = [xcfw / "ios-arm64", xcfw / f"ios-{arch}"]
+        for c in slice_candidates:
+            fw = c / "thorvg.framework" / "thorvg"
+            if fw.exists():
+                _ios_fw_dylib = fw
+                _ios_fw_dir = fw.parent
                 break
 
-    if _ios_dylib.exists():
-        _bundle_dylib(_ios_dylib, _PKG_SRC)
-        library_dirs.append(str(_ios_lib_dir))
-        libraries.append("thorvg-1")
-        extra_link_args.append("-Wl,-rpath,@loader_path")
+    if _ios_fw_dylib:
+        # -F for framework search, -framework to link
+        library_dirs.append(str(_ios_fw_dir.parent))  # dir containing thorvg.framework/
+        extra_link_args.extend([
+            f"-F{_ios_fw_dir.parent}",
+            "-framework", "thorvg",
+        ])
+        # Runtime: @rpath = @executable_path/Frameworks (set by Xcode)
+        extra_link_args.append("-Wl,-rpath,@executable_path/Frameworks")
+        print(f"[setup.py] iOS: linking against {_ios_fw_dylib}")
+        print(f"[setup.py] iOS: runtime load path = @rpath/thorvg.framework/thorvg")
     else:
-        library_dirs.append(str(xcfw))
-        libraries.append("thorvg")
+        # Fallback: try bare dylib (legacy / direct meson build)
+        _ios_lib_dir = Path(THORVG_LIB_DIR)
+        _ios_dylib = _ios_lib_dir / "libthorvg-1.dylib"
+        if _ios_dylib.exists():
+            library_dirs.append(str(_ios_lib_dir))
+            libraries.append("thorvg-1")
+            extra_link_args.append("-Wl,-rpath,@executable_path/Frameworks")
+            print(f"[setup.py] iOS: fallback linking against {_ios_dylib}")
+        else:
+            print(f"[setup.py] WARNING: no thorvg dylib/framework found for iOS!")
+            libraries.append("thorvg")
 
     extra_link_args.extend(["-framework", "Foundation", "-framework", "CoreGraphics"])
     ios_target = os.environ.get("IPHONEOS_DEPLOYMENT_TARGET", "13.0")

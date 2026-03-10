@@ -42,37 +42,85 @@ build_target "ios_arm64"      "$ROOT_DIR/cross/ios_arm64.txt"            "$MESON
 build_target "ios_sim_arm64"  "$ROOT_DIR/cross/ios_simulator_arm64.txt"  "$MESON_COMMON"
 build_target "ios_sim_x86_64" "$ROOT_DIR/cross/ios_simulator_x86_64.txt" "$MESON_COMMON"
 
-# ---------- copy / create fat libraries ----------
-echo ">>> Creating fat libraries with lipo..."
+# ---------- helper: wrap dylib in a .framework bundle ----------
+make_framework() {
+    local dylib_path="$1"
+    local output_dir="$2"
+    local fw_dir="$output_dir/thorvg.framework"
 
-# iOS device (single arch, just copy)
-mkdir -p "$OUTPUT_DIR/ios_arm64"
-cp "$BUILD_ROOT/ios_arm64/src/libthorvg-1.dylib" "$OUTPUT_DIR/ios_arm64/libthorvg-1.dylib"
+    mkdir -p "$fw_dir/Headers"
 
-# iOS Simulator fat (arm64 + x86_64)
+    # Copy dylib and rename to framework binary name
+    cp "$dylib_path" "$fw_dir/thorvg"
+
+    # Set install name to @rpath/thorvg.framework/thorvg so the loader
+    # resolves via the app's LD_RUNPATH_SEARCH_PATHS (= @executable_path/Frameworks)
+    install_name_tool -id "@rpath/thorvg.framework/thorvg" "$fw_dir/thorvg"
+
+    # Copy public header
+    cp "$ROOT_DIR/inc/thorvg.h" "$fw_dir/Headers/"
+
+    # Minimal Info.plist
+    cat > "$fw_dir/Info.plist" << 'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>org.thorvg.thorvg</string>
+    <key>CFBundleName</key>
+    <string>thorvg</string>
+    <key>CFBundlePackageType</key>
+    <string>FMWK</string>
+    <key>CFBundleVersion</key>
+    <string>1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>MinimumOSVersion</key>
+    <string>13.0</string>
+</dict>
+</plist>
+PLIST
+
+    echo "    Created: $fw_dir"
+}
+
+# ---------- create .framework bundles ----------
+echo ">>> Creating .framework bundles..."
+
+# iOS device (single arch)
+make_framework "$BUILD_ROOT/ios_arm64/src/libthorvg-1.dylib" "$OUTPUT_DIR/ios_arm64"
+
+# iOS Simulator fat (arm64 + x86_64 → lipo → framework)
 mkdir -p "$OUTPUT_DIR/ios_sim_fat"
 lipo -create \
     "$BUILD_ROOT/ios_sim_arm64/src/libthorvg-1.dylib" \
     "$BUILD_ROOT/ios_sim_x86_64/src/libthorvg-1.dylib" \
     -output "$OUTPUT_DIR/ios_sim_fat/libthorvg-1.dylib"
+make_framework "$OUTPUT_DIR/ios_sim_fat/libthorvg-1.dylib" "$OUTPUT_DIR/ios_sim_fat"
+# Clean up intermediate fat dylib
+rm "$OUTPUT_DIR/ios_sim_fat/libthorvg-1.dylib"
 
-echo "<<< Fat libraries created"
+echo "<<< .framework bundles created"
 echo ""
 
-# ---------- create XCFramework ----------
+# ---------- create XCFramework from .framework bundles ----------
 echo ">>> Creating XCFramework..."
 
+rm -rf "$OUTPUT_DIR/thorvg.xcframework"
 xcodebuild -create-xcframework \
-    -library "$OUTPUT_DIR/ios_arm64/libthorvg-1.dylib" \
-    -headers "$ROOT_DIR/inc" \
-    -library "$OUTPUT_DIR/ios_sim_fat/libthorvg-1.dylib" \
-    -headers "$ROOT_DIR/inc" \
+    -framework "$OUTPUT_DIR/ios_arm64/thorvg.framework" \
+    -framework "$OUTPUT_DIR/ios_sim_fat/thorvg.framework" \
     -output "$OUTPUT_DIR/thorvg.xcframework"
 
 echo ""
 echo "=== Build Complete ==="
 echo "XCFramework: $OUTPUT_DIR/thorvg.xcframework"
 echo ""
-echo "Individual libraries:"
-echo "  iOS arm64:           $OUTPUT_DIR/ios_arm64/libthorvg-1.dylib"
-echo "  iOS Simulator (fat): $OUTPUT_DIR/ios_sim_fat/libthorvg-1.dylib"
+echo "Contents:"
+echo "  Device:    thorvg.xcframework/ios-arm64/thorvg.framework/thorvg"
+echo "  Simulator: thorvg.xcframework/ios-arm64_x86_64-simulator/thorvg.framework/thorvg"
+echo ""
+echo "Install name: @rpath/thorvg.framework/thorvg"
+echo "In Xcode: embed thorvg.xcframework → loads at @executable_path/Frameworks/thorvg.framework/thorvg"
