@@ -205,7 +205,8 @@ def build_linux(root: Path, gpu: str) -> None:
 
     out_dir.mkdir(parents=True, exist_ok=True)
     for f in build_dir.glob("src/libthorvg-1.so*"):
-        shutil.copy2(str(f), str(out_dir / f.name))
+        if f.is_file():
+            shutil.copy2(str(f), str(out_dir / f.name))
 
     print("=== Build Complete ===")
     print(f"Shared library: {out_dir / 'libthorvg-1.so'}")

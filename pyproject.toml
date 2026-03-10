@@ -51,15 +51,7 @@ before-all = """
 environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output/macos_fat", ANGLE_LIB_DIR = "thorvg/output/angle", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 [tool.cibuildwheel.windows]
-before-all = """
-    if not exist {project}\\thorvg (
-        curl -sL https://github.com/thorvg/thorvg/archive/refs/tags/v1.0.1.tar.gz -o thorvg-src.tar.gz
-        tar xzf thorvg-src.tar.gz -C {project}
-        move {project}\\thorvg-1.0.1 {project}\\thorvg
-        del thorvg-src.tar.gz
-    )
-    python {project}\\tools\\build_thorvg.py windows --thorvg-root={project}\\thorvg
-"""
+before-all = "call {project}\\ci\\prepare_thorvg_windows.bat {project}"
 environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output/windows_x64" }
 
 [tool.cibuildwheel.ios]
