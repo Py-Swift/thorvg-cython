@@ -1,0 +1,22 @@
+# Cross-compilation: Windows ARM64
+# Use from a VS Developer Command Prompt with ARM64 target
+
+[binaries]
+cpp = 'cl'
+c = 'cl'
+ar = 'lib'
+windres = 'rc'
+
+[properties]
+has_function_printf = true
+
+[built-in options]
+cpp_args = []
+cpp_link_args = []
+
+[host_machine]
+system = 'windows'
+kernel = 'nt'
+cpu_family = 'aarch64'
+cpu = 'aarch64'
+endian = 'little'

@@ -11,6 +11,9 @@ set -euo pipefail
 #   $2  - Android NDK path (default: $ANDROID_NDK_HOME or $ANDROID_NDK)
 #   $3  - Android API level (default: 24)
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CROSS_DIR="$SCRIPT_DIR/../cross"
+
 ROOT_DIR=$1
 cd "$ROOT_DIR"
 ROOT_DIR="$(pwd)"
@@ -81,15 +84,15 @@ build_target() {
 
 # ---------- generate cross files ----------
 echo ">>> Generating cross files..."
-CROSS_DIR="$BUILD_ROOT/cross"
-mkdir -p "$CROSS_DIR"
-generate_cross_file "$ROOT_DIR/cross/android_aarch64.txt" "$CROSS_DIR/android_aarch64.txt"
-generate_cross_file "$ROOT_DIR/cross/android_x86_64.txt"  "$CROSS_DIR/android_x86_64.txt"
+GEN_CROSS_DIR="$BUILD_ROOT/cross"
+mkdir -p "$GEN_CROSS_DIR"
+generate_cross_file "$CROSS_DIR/android_aarch64.txt" "$GEN_CROSS_DIR/android_aarch64.txt"
+generate_cross_file "$CROSS_DIR/android_x86_64.txt"  "$GEN_CROSS_DIR/android_x86_64.txt"
 echo ""
 
 # ---------- build each arch ----------
-build_target "android_aarch64" "$CROSS_DIR/android_aarch64.txt"
-build_target "android_x86_64"  "$CROSS_DIR/android_x86_64.txt"
+build_target "android_aarch64" "$GEN_CROSS_DIR/android_aarch64.txt"
+build_target "android_x86_64"  "$GEN_CROSS_DIR/android_x86_64.txt"
 
 # ---------- copy outputs ----------
 mkdir -p "$OUTPUT_DIR/android_aarch64"

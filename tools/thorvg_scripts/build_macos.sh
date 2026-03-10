@@ -6,6 +6,9 @@ set -euo pipefail
 #
 # Usage:  bash build_macos.sh <thorvg_source_dir>
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CROSS_DIR="$SCRIPT_DIR/../cross"
+
 ROOT_DIR=$1
 cd "$ROOT_DIR"
 ROOT_DIR="$(pwd)"
@@ -38,8 +41,8 @@ build_target() {
 }
 
 # ---------- build each slice ----------
-build_target "macos_arm64"  "$ROOT_DIR/cross/macos_arm64.txt"  "$MESON_COMMON"
-build_target "macos_x86_64" "$ROOT_DIR/cross/macos_x86_64.txt" "$MESON_COMMON"
+build_target "macos_arm64"  "$CROSS_DIR/macos_arm64.txt"  "$MESON_COMMON"
+build_target "macos_x86_64" "$CROSS_DIR/macos_x86_64.txt" "$MESON_COMMON"
 
 # ---------- copy individual arch outputs ----------
 mkdir -p "$OUTPUT_DIR/macos_arm64"

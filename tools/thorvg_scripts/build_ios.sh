@@ -6,6 +6,9 @@ set -euo pipefail
 #
 # Usage:  bash build_ios.sh <thorvg_source_dir>
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CROSS_DIR="$SCRIPT_DIR/../cross"
+
 ROOT_DIR=$1
 cd "$ROOT_DIR"
 ROOT_DIR="$(pwd)"
@@ -38,9 +41,9 @@ build_target() {
 }
 
 # ---------- build each slice ----------
-build_target "ios_arm64"      "$ROOT_DIR/cross/ios_arm64.txt"            "$MESON_COMMON"
-build_target "ios_sim_arm64"  "$ROOT_DIR/cross/ios_simulator_arm64.txt"  "$MESON_COMMON"
-build_target "ios_sim_x86_64" "$ROOT_DIR/cross/ios_simulator_x86_64.txt" "$MESON_COMMON"
+build_target "ios_arm64"      "$CROSS_DIR/ios_arm64.txt"            "$MESON_COMMON"
+build_target "ios_sim_arm64"  "$CROSS_DIR/ios_simulator_arm64.txt"  "$MESON_COMMON"
+build_target "ios_sim_x86_64" "$CROSS_DIR/ios_simulator_x86_64.txt" "$MESON_COMMON"
 
 # ---------- helper: wrap dylib in a .framework bundle ----------
 make_framework() {
