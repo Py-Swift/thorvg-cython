@@ -402,13 +402,24 @@ elif sys.platform.startswith("win"):
     #    2. THORVG_LIB_DIR / thorvg-1.dll  (flat layout)
     #    3. output/windows_{arch}/
     #    4. Fallback: linker search
+    #
+    #  Arch detection: cibuildwheel for Windows ARM64 cross-compilation
+    #  uses a host x64 Python, so sysconfig.get_platform() may return
+    #  "win-amd64" even when targeting arm64.  We check multiple sources:
+    #    - _PYTHON_HOST_PLATFORM  (Python 3.12+ cross-compile)
+    #    - SETUPTOOLS_EXT_SUFFIX  (cibuildwheel sets e.g. .cp311-win_arm64.pyd)
+    #    - VSCMD_ARG_TGT_ARCH    (Visual Studio dev env)
+    #    - sysconfig.get_platform()
     # -----------------------------------------------------------------------
     _host_plat = os.environ.get("_PYTHON_HOST_PLATFORM", "") or sysconfig.get_platform()
-    if "arm64" in _host_plat:
+    _ext_suffix = os.environ.get("SETUPTOOLS_EXT_SUFFIX", "")
+    _vscmd_arch = os.environ.get("VSCMD_ARG_TGT_ARCH", "")
+    if "arm64" in _host_plat or "arm64" in _ext_suffix or _vscmd_arch.lower() == "arm64":
         _win_arch = "arm64"
     else:
         _win_arch = "x64"
-    print(f"[setup.py] Windows arch={_win_arch}, _host_plat={_host_plat!r}")
+    print(f"[setup.py] Windows arch={_win_arch}, _host_plat={_host_plat!r}, "
+          f"SETUPTOOLS_EXT_SUFFIX={_ext_suffix!r}, VSCMD_ARG_TGT_ARCH={_vscmd_arch!r}")
 
     _lib_dir = Path(THORVG_LIB_DIR)
     _win_arch_dir = _lib_dir / f"windows_{_win_arch}"
