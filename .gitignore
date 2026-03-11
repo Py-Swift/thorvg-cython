@@ -34,7 +34,9 @@ Thumbs.db
 builddir*/
 output/
 src/.framework/
+wheelhouse/
 
 # thorvg source (symlink for local dev, downloaded in CI)
 thorvg
 uv.lock
+
