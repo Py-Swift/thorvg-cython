@@ -20,9 +20,7 @@ jobs:
     - uses: astral-sh/setup-uv@v5
 
     - name: Install cibuildwheel
-      run: |
-        uv tool install cibuildwheel
-        sudo apt-get update && sudo apt-get install -y meson ninja-build
+      run: uv tool install cibuildwheel
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
@@ -47,9 +45,7 @@ jobs:
     - uses: astral-sh/setup-uv@v5
 
     - name: Install cibuildwheel
-      run: |
-        uv tool install cibuildwheel
-        brew install meson
+      run: uv tool install cibuildwheel
 
     - name: Build wheels
       run: cibuildwheel --platform macos --archs "x86_64 arm64 universal2" --output-dir wheelhouse
@@ -69,10 +65,7 @@ jobs:
     - uses: astral-sh/setup-uv@v5
 
     - name: Install cibuildwheel
-      run: |
-        uv tool install cibuildwheel
-        brew install meson
-        brew install ninja
+      run: uv tool install cibuildwheel
 
     - name: Build wheels
       run: cibuildwheel --platform ios --archs "arm64_iphoneos arm64_iphonesimulator x86_64_iphonesimulator" --output-dir wheelhouse
@@ -100,9 +93,7 @@ jobs:
     - uses: astral-sh/setup-uv@v5
 
     - name: Install cibuildwheel
-      run: |
-        uv tool install cibuildwheel
-        sudo apt-get update && sudo apt-get install -y meson ninja-build
+      run: uv tool install cibuildwheel
 
     - name: Build wheels
       run: cibuildwheel --platform android --archs "arm64_v8a x86_64" --output-dir wheelhouse
