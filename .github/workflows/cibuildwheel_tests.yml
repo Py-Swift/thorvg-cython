@@ -83,7 +83,10 @@ jobs:
         CIBW_BUILD: "cp313-ios_*"
 
     - name: Inject xcframeworks into iOS wheels
-      run: python tools/add-ios-frameworks.py wheelhouse --xcframework thorvg/output/thorvg.xcframework --angle-dir thorvg/output/angle
+      run: python tools/add-ios-frameworks.py wheelhouse
+
+    - name: Test iOS wheels on Simulator
+      run: python tools/ios_testbench.py test
 
     - uses: actions/upload-artifact@v4
       with:

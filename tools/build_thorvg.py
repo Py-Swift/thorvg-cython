@@ -271,8 +271,9 @@ def _build_libomp(work_dir: Path, *,
                   deployment_target: str,
                   deployment_flag: str,
                   tag: str | None = None,
-                  target_triple: str | None = None) -> tuple[Path, Path]:
-    """Cross-compile libomp.a and return (libomp_a, omp_h) paths.
+                  target_triple: str | None = None,
+                  shared: bool = False) -> tuple[Path, Path]:
+    """Cross-compile libomp and return (lib, omp_h) paths.
 
     Parameters
     ----------
@@ -299,17 +300,23 @@ def _build_libomp(work_dir: Path, *,
         compilers.  Required for iOS Simulator builds so that object
         files carry the correct platform marker (e.g.
         ``arm64-apple-ios13.0-simulator``).
+    shared : bool
+        When True, build a shared ``libomp.dylib`` instead of the
+        default static ``libomp.a``.
 
     Returns
     -------
     tuple[Path, Path]
-        ``(libomp.a, omp.h)`` absolute paths.
+        ``(libomp.a|libomp.dylib, omp.h)`` absolute paths.
     """
     _ensure_tool("cmake")
 
     build_tag = tag or f"{system_name.lower()}-{arch_cmake}"
+    if shared:
+        build_tag += "-shared"
     build_dir = work_dir / f"build-{build_tag}"
-    lib_path = build_dir / "runtime" / "src" / "libomp.a"
+    lib_name = "libomp.dylib" if shared else "libomp.a"
+    lib_path = build_dir / "runtime" / "src" / lib_name
     hdr_path = build_dir / "runtime" / "src" / "omp.h"
 
     if lib_path.exists() and hdr_path.exists():
@@ -336,7 +343,7 @@ def _build_libomp(work_dir: Path, *,
         f"-DCMAKE_CXX_COMPILER={cxx}",
         f"-DCMAKE_ASM_COMPILER={cc}",
         f"-DLLVM_COMMON_CMAKE_UTILS={cmake_src}",
-        "-DLIBOMP_ENABLE_SHARED=OFF",
+        f"-DLIBOMP_ENABLE_SHARED={'ON' if shared else 'OFF'}",
         f"-DLIBOMP_ARCH={arch_omp}",
         "-DLIBOMP_OMPT_SUPPORT=OFF",
         "-DLIBOMP_USE_HWLOC=OFF",
@@ -362,7 +369,8 @@ def _build_libomp(work_dir: Path, *,
     return lib_path, hdr_path
 
 
-def _prepare_libomp_apple(root: Path, targets: list[dict]) -> dict[str, tuple[Path, Path]]:
+def _prepare_libomp_apple(root: Path, targets: list[dict],
+                         *, shared: bool = False) -> dict[str, tuple[Path, Path]]:
     """Build libomp for multiple Apple targets.
 
     Parameters
@@ -373,11 +381,13 @@ def _prepare_libomp_apple(root: Path, targets: list[dict]) -> dict[str, tuple[Pa
         Each dict has keys: ``name``, ``system_name``, ``sysroot``,
         ``arch_cmake``, ``arch_omp``, ``deployment_target``,
         ``deployment_flag``.
+    shared : bool
+        When True, build shared ``libomp.dylib`` for each target.
 
     Returns
     -------
     dict[str, tuple[Path, Path]]
-        Mapping of target *name* → ``(libomp.a, omp.h)``.
+        Mapping of target *name* → ``(libomp.a|libomp.dylib, omp.h)``.
     """
     work_dir = root / "libomp_build"
     _download_llvm_openmp(work_dir)
@@ -394,6 +404,7 @@ def _prepare_libomp_apple(root: Path, targets: list[dict]) -> dict[str, tuple[Pa
             deployment_flag=t["deployment_flag"],
             tag=t.get("tag"),
             target_triple=t.get("target_triple"),
+            shared=shared,
         )
         results[t["name"]] = (lib, hdr)
 
@@ -401,22 +412,37 @@ def _prepare_libomp_apple(root: Path, targets: list[dict]) -> dict[str, tuple[Pa
 
 
 def _inject_openmp_cross_file(template_path: Path, output_path: Path,
-                               libomp_a: Path, omp_h_dir: Path) -> Path:
+                               libomp_a: Path, omp_h_dir: Path,
+                               *, framework_dir: Path | None = None) -> Path:
     """Copy a meson cross file and inject OpenMP flags.
 
-    Adds ``-Xclang -fopenmp -I<omp.h dir>`` to ``cpp_args`` and
-    ``<libomp.a path>`` to ``cpp_link_args``.
+    Adds ``-Xclang -fopenmp -I<omp.h dir>`` to ``cpp_args``.
+
+    For linking, two modes are supported:
+
+    *Static* (default): appends ``<libomp.a path>`` to ``cpp_link_args``.
+
+    *Framework* (when *framework_dir* is given): appends
+    ``-F<framework_dir> -framework libomp`` so the resulting dylib
+    dynamically links ``@rpath/libomp.framework/libomp``.
     """
     content = template_path.read_text()
 
     omp_include = str(omp_h_dir)
-    omp_lib = str(libomp_a)
 
     # Inject into cpp_args: append -Xclang, -fopenmp, -I<dir> before the closing ]
     content = _inject_cross_list(content, "cpp_args",
                                  ["-Xclang", "-fopenmp", f"-I{omp_include}"])
-    # Inject into cpp_link_args: append the static lib path before closing ]
-    content = _inject_cross_list(content, "cpp_link_args", [omp_lib])
+
+    # Inject linker flags
+    if framework_dir:
+        content = _inject_cross_list(
+            content, "cpp_link_args",
+            [f"-F{framework_dir}", "-framework", "libomp"],
+        )
+    else:
+        omp_lib = str(libomp_a)
+        content = _inject_cross_list(content, "cpp_link_args", [omp_lib])
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(content)
@@ -612,6 +638,53 @@ def build_macos(root: Path, gpu: str) -> None:
 # ---------------------------------------------------------------------------
 #  Platform: iOS
 # ---------------------------------------------------------------------------
+def _make_libomp_framework(dylib_path: Path, omp_h: Path,
+                           fw_output_dir: Path) -> Path:
+    """Wrap a libomp dylib in a .framework bundle.
+
+    Returns the path to the created ``libomp.framework`` directory.
+    """
+    fw_dir = fw_output_dir / "libomp.framework"
+    if fw_dir.exists():
+        shutil.rmtree(fw_dir)
+    fw_dir.mkdir(parents=True, exist_ok=True)
+    (fw_dir / "Headers").mkdir(exist_ok=True)
+
+    shutil.copy2(str(dylib_path), str(fw_dir / "libomp"))
+    _run([
+        "install_name_tool", "-id",
+        "@rpath/libomp.framework/libomp",
+        str(fw_dir / "libomp"),
+    ])
+    shutil.copy2(str(omp_h), str(fw_dir / "Headers" / "omp.h"))
+
+    (fw_dir / "Info.plist").write_text(textwrap.dedent("""\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+          "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleExecutable</key>
+            <string>libomp</string>
+            <key>CFBundleIdentifier</key>
+            <string>org.llvm.libomp</string>
+            <key>CFBundleName</key>
+            <string>libomp</string>
+            <key>CFBundlePackageType</key>
+            <string>FMWK</string>
+            <key>CFBundleVersion</key>
+            <string>1.0</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>MinimumOSVersion</key>
+            <string>13.0</string>
+        </dict>
+        </plist>
+    """))
+    print(f"    Created: {fw_dir}")
+    return fw_dir
+
+
 def build_ios(root: Path, gpu: str) -> None:
     """Build thorvg for iOS device + simulator, produce XCFramework."""
     _ensure_tool("meson")
@@ -630,7 +703,7 @@ def build_ios(root: Path, gpu: str) -> None:
         shutil.rmtree(build_root)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- Build libomp for iOS arm64 + simulator arm64/x86_64 ---
+    # --- Build libomp (shared) for iOS arm64 + simulator arm64/x86_64 ---
     ios_sdk = _apple_sdk("iPhoneOS")
     sim_sdk = _apple_sdk("iPhoneSimulator")
     omp_targets = [
@@ -666,9 +739,19 @@ def build_ios(root: Path, gpu: str) -> None:
             "target_triple": "x86_64-apple-ios13.0-simulator",
         },
     ]
-    omp = _prepare_libomp_apple(root, omp_targets)
+    omp = _prepare_libomp_apple(root, omp_targets, shared=True)
 
-    # --- Generate cross files with OpenMP flags ---
+    # --- Wrap each libomp dylib in a .framework bundle ---
+    print(">>> Creating libomp .framework bundles...")
+    omp_fw_dirs: dict[str, Path] = {}
+    omp_fw_staging = build_root / "libomp_frameworks"
+    for name in ("ios_arm64", "ios_sim_arm64", "ios_sim_x86_64"):
+        dylib, omp_h = omp[name]
+        fw = _make_libomp_framework(dylib, omp_h, omp_fw_staging / name)
+        omp_fw_dirs[name] = fw
+    print("<<< libomp .framework bundles created\n")
+
+    # --- Generate cross files with OpenMP framework flags ---
     gen_cross_dir = build_root / "cross"
     gen_cross_dir.mkdir(parents=True, exist_ok=True)
 
@@ -676,11 +759,12 @@ def build_ios(root: Path, gpu: str) -> None:
     for name, template_name in [("ios_arm64", "ios_arm64.txt"),
                                  ("ios_sim_arm64", "ios_simulator_arm64.txt"),
                                  ("ios_sim_x86_64", "ios_simulator_x86_64.txt")]:
-        libomp_a, omp_h = omp[name]
+        libomp_dylib, omp_h = omp[name]
         cf = _inject_openmp_cross_file(
             CROSS_DIR / template_name,
             gen_cross_dir / template_name,
-            libomp_a, omp_h.parent,
+            libomp_dylib, omp_h.parent,
+            framework_dir=omp_fw_dirs[name].parent,
         )
         cross_files[name] = cf
 
@@ -699,7 +783,7 @@ def build_ios(root: Path, gpu: str) -> None:
     _build("ios_sim_arm64")
     _build("ios_sim_x86_64")
 
-    # --- .framework bundles ---
+    # --- thorvg .framework bundles ---
     def _make_framework(dylib_path: Path, fw_output_dir: Path) -> None:
         fw_dir = fw_output_dir / "thorvg.framework"
         fw_dir.mkdir(parents=True, exist_ok=True)
@@ -722,6 +806,8 @@ def build_ios(root: Path, gpu: str) -> None:
               "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
             <plist version="1.0">
             <dict>
+                <key>CFBundleExecutable</key>
+                <string>thorvg</string>
                 <key>CFBundleIdentifier</key>
                 <string>org.thorvg.thorvg</string>
                 <key>CFBundleName</key>
@@ -739,7 +825,7 @@ def build_ios(root: Path, gpu: str) -> None:
         """))
         print(f"    Created: {fw_dir}")
 
-    print(">>> Creating .framework bundles...")
+    print(">>> Creating thorvg .framework bundles...")
 
     # Device
     _make_framework(
@@ -760,10 +846,10 @@ def build_ios(root: Path, gpu: str) -> None:
     _make_framework(sim_fat_dir / "libthorvg-1.dylib", sim_fat_dir)
     (sim_fat_dir / "libthorvg-1.dylib").unlink()
 
-    print("<<< .framework bundles created\n")
+    print("<<< thorvg .framework bundles created\n")
 
-    # --- XCFramework ---
-    print(">>> Creating XCFramework...")
+    # --- thorvg XCFramework ---
+    print(">>> Creating thorvg.xcframework...")
     xcfw = output_dir / "thorvg.xcframework"
     if xcfw.exists():
         shutil.rmtree(xcfw)
@@ -774,16 +860,52 @@ def build_ios(root: Path, gpu: str) -> None:
         "-output", str(xcfw),
     ])
 
+    # --- libomp XCFramework ---
+    print(">>> Creating libomp.xcframework...")
+
+    # Fat simulator libomp (arm64 + x86_64)
+    omp_sim_fat_dir = build_root / "libomp_sim_fat"
+    omp_sim_fat_dir.mkdir(parents=True, exist_ok=True)
+    _run([
+        "lipo", "-create",
+        str(omp_fw_dirs["ios_sim_arm64"] / "libomp"),
+        str(omp_fw_dirs["ios_sim_x86_64"] / "libomp"),
+        "-output", str(omp_sim_fat_dir / "libomp"),
+    ])
+    # Get omp.h from any target (they're identical)
+    _, any_omp_h = omp["ios_arm64"]
+    omp_sim_fat_fw = _make_libomp_framework(
+        omp_sim_fat_dir / "libomp", any_omp_h, omp_sim_fat_dir,
+    )
+    (omp_sim_fat_dir / "libomp").unlink()
+
+    omp_xcfw = output_dir / "libomp.xcframework"
+    if omp_xcfw.exists():
+        shutil.rmtree(omp_xcfw)
+    _run([
+        "xcodebuild", "-create-xcframework",
+        "-framework", str(omp_fw_dirs["ios_arm64"]),
+        "-framework", str(omp_sim_fat_fw),
+        "-output", str(omp_xcfw),
+    ])
+    print("<<< libomp.xcframework created\n")
+
     print()
     print("=== Build Complete ===")
-    print(f"XCFramework: {xcfw}")
+    print(f"thorvg XCFramework: {xcfw}")
+    print(f"libomp XCFramework: {omp_xcfw}")
     print()
     print("Contents:")
-    print("  Device:    thorvg.xcframework/ios-arm64/thorvg.framework/thorvg")
-    print("  Simulator: thorvg.xcframework/ios-arm64_x86_64-simulator/"
+    print("  thorvg  Device:    thorvg.xcframework/ios-arm64/thorvg.framework/thorvg")
+    print("  thorvg  Simulator: thorvg.xcframework/ios-arm64_x86_64-simulator/"
           "thorvg.framework/thorvg")
+    print("  libomp  Device:    libomp.xcframework/ios-arm64/libomp.framework/libomp")
+    print("  libomp  Simulator: libomp.xcframework/ios-arm64_x86_64-simulator/"
+          "libomp.framework/libomp")
     print()
-    print("Install name: @rpath/thorvg.framework/thorvg")
+    print("Install names:")
+    print("  @rpath/thorvg.framework/thorvg")
+    print("  @rpath/libomp.framework/libomp")
 
 
 # ---------------------------------------------------------------------------

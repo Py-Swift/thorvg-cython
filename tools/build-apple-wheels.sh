@@ -20,9 +20,10 @@ uvx cibuildwheel --platform ios \
     --output-dir "$OUTPUT_DIR"
 
 echo ""
-echo "=== Injecting xcframework into iOS wheels ==="
+echo "=== Injecting xcframeworks into iOS wheels ==="
 python3 "$SCRIPT_DIR/add-ios-frameworks.py" "$OUTPUT_DIR" \
-    --xcframework "$PROJECT_DIR/thorvg/output/thorvg.xcframework"
+    --xcframework "$PROJECT_DIR/thorvg/output/thorvg.xcframework" \
+    --xcframework "$PROJECT_DIR/thorvg/output/libomp.xcframework"
 
 echo ""
 echo "=== Done ==="

@@ -5,20 +5,24 @@ Post-build script: inject xcframeworks into iOS wheels.
 Supports two modes:
 
 1) repair-wheel-command (cibuildwheel):
-     python tools/add-ios-frameworks.py <wheel> <dest_dir> --xcframework <path> [--angle-dir <dir>]
+     python tools/add-ios-frameworks.py <wheel> <dest_dir> [--xcframework <path> ...]
    Copies the wheel to dest_dir and injects the xcframeworks.
 
 2) batch (manual / CI post-step):
-     python tools/add-ios-frameworks.py <wheels_dir> --xcframework <path> [--angle-dir <dir>]
+     python tools/add-ios-frameworks.py <wheels_dir> [--xcframework <path> ...]
    Patches every .whl in the directory in-place.
 
 After patching, each iOS wheel contains:
     .frameworks/thorvg.xcframework/...
-    .frameworks/libEGL.xcframework/...      (if ANGLE provided)
-    .frameworks/libGLESv2.xcframework/...   (if ANGLE provided)
+    .frameworks/libomp.xcframework/...
 
 This follows the BeeWare convention where .frameworks/ at
 site-packages level is discovered by the host Xcode project.
+
+Note: ANGLE / EGL xcframeworks are NOT injected automatically.
+Users who build with GPU support are responsible for distributing
+the ANGLE xcframeworks (libEGL.xcframework, libGLESv2.xcframework)
+themselves.
 """
 import argparse
 import os
@@ -26,28 +30,29 @@ import shutil
 import zipfile
 
 
-def _resolve_xcframeworks(cli_paths: list[str] | None, angle_dir: str | None) -> list[str]:
-    """Resolve xcframework paths from CLI args, env vars, and ANGLE dir."""
+def _resolve_xcframeworks(cli_paths: list[str] | None) -> list[str]:
+    """Resolve xcframework paths from CLI args or env vars."""
     result = []
 
-    # Explicit --xcframework args
     if cli_paths:
         result.extend(cli_paths)
     else:
         # Default: thorvg xcframework
+        root = os.environ.get("THORVG_ROOT", "thorvg")
+        output = os.path.join(root, "output")
+
         if "THORVG_XCFRAMEWORK" in os.environ:
             result.append(os.environ["THORVG_XCFRAMEWORK"])
         else:
-            root = os.environ.get("THORVG_ROOT", "thorvg")
-            result.append(os.path.join(root, "output", "thorvg.xcframework"))
+            result.append(os.path.join(output, "thorvg.xcframework"))
 
-    # ANGLE xcframeworks from --angle-dir or env
-    if not angle_dir:
-        angle_dir = os.environ.get("ANGLE_XCFRAMEWORK_DIR", "")
-    if angle_dir and os.path.isdir(angle_dir):
-        for name in sorted(os.listdir(angle_dir)):
-            if name.endswith(".xcframework"):
-                result.append(os.path.join(angle_dir, name))
+        # libomp xcframework
+        libomp_xcfw = os.environ.get(
+            "LIBOMP_XCFRAMEWORK",
+            os.path.join(output, "libomp.xcframework"),
+        )
+        if os.path.isdir(libomp_xcfw):
+            result.append(libomp_xcfw)
 
     return result
 
@@ -120,13 +125,8 @@ if __name__ == "__main__":
         dest="xcframeworks",
         help="Path to an xcframework to inject (can be repeated).",
     )
-    parser.add_argument(
-        "--angle-dir",
-        default=None,
-        help="Directory containing ANGLE xcframeworks (libEGL.xcframework, libGLESv2.xcframework).",
-    )
     args = parser.parse_args()
-    xcframeworks = _resolve_xcframeworks(args.xcframeworks, args.angle_dir)
+    xcframeworks = _resolve_xcframeworks(args.xcframeworks)
     print(f"XCFrameworks to inject: {[os.path.basename(x) for x in xcframeworks]}")
 
     if len(args.positional) == 2 and args.positional[0].endswith(".whl"):
@@ -137,6 +137,6 @@ if __name__ == "__main__":
         patch_wheels_dir(args.positional[0], xcframeworks)
     else:
         parser.error(
-            "Usage: script.py <wheel.whl> <dest_dir> [--xcframework ...] [--angle-dir ...]\n"
-            "       script.py <wheels_dir> [--xcframework ...] [--angle-dir ...]"
+            "Usage: script.py <wheel.whl> <dest_dir> [--xcframework ...]\n"
+            "       script.py <wheels_dir> [--xcframework ...]"
         )

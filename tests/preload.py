@@ -69,6 +69,9 @@ def ensure_libthorvg() -> None:
         # The simulator slice is named ios-arm64_x86_64-simulator
         #sim_fw = xcfw / "ios-arm64_x86_64-simulator" / "thorvg.framework" / "thorvg"
         thor_lib_dir = environ.get("THORVG_LIB_DIR")
+        if not thor_lib_dir:
+            # Framework is embedded in the app bundle by Xcode; no preload needed.
+            return
         thor_bin = join(thor_lib_dir, "thorvg.xcframework/ios-arm64_x86_64-simulator/thorvg.framework/thorvg") 
         if exists(thor_bin):
             ctypes.CDLL(str(thor_bin), mode=ctypes.RTLD_GLOBAL)

@@ -91,6 +91,11 @@ THORVG_XCFRAMEWORK = os.environ.get(
     str(THORVG_ROOT / "output" / "thorvg.xcframework"),
 )
 
+LIBOMP_XCFRAMEWORK = os.environ.get(
+    "LIBOMP_XCFRAMEWORK",
+    str(THORVG_ROOT / "output" / "libomp.xcframework"),
+)
+
 ANGLE_LIB_DIR = os.environ.get(
     "ANGLE_LIB_DIR",
     str(THORVG_ROOT / "output" / "angle"),
@@ -301,6 +306,35 @@ if _is_ios_build():
         else:
             print(f"[setup.py] WARNING: no thorvg dylib/framework found for iOS!")
             libraries.append("thorvg")
+
+    # --- libomp framework (thorvg dynamically links libomp on iOS) ---
+    _omp_xcfw = Path(LIBOMP_XCFRAMEWORK)
+    _omp_fw_dylib = None
+    _omp_fw_dir = None
+
+    if _omp_xcfw.is_dir():
+        if _is_simulator:
+            _omp_slice_candidates = [
+                _omp_xcfw / "ios-arm64_x86_64-simulator",
+                _omp_xcfw / f"ios-{arch}-simulator",
+            ]
+        else:
+            _omp_slice_candidates = [_omp_xcfw / "ios-arm64", _omp_xcfw / f"ios-{arch}"]
+        for _oc in _omp_slice_candidates:
+            _ofw = _oc / "libomp.framework" / "libomp"
+            if _ofw.exists():
+                _omp_fw_dylib = _ofw
+                _omp_fw_dir = _ofw.parent
+                break
+
+    if _omp_fw_dylib:
+        extra_link_args.extend([
+            f"-F{_omp_fw_dir.parent}",
+            "-framework", "libomp",
+        ])
+        print(f"[setup.py] iOS: linking against {_omp_fw_dylib}")
+    else:
+        print(f"[setup.py] iOS: libomp.xcframework not found at {_omp_xcfw}, skipping")
 
     extra_link_args.extend(["-framework", "Foundation", "-framework", "CoreGraphics"])
     ios_target = os.environ.get("IPHONEOS_DEPLOYMENT_TARGET", "13.0")
