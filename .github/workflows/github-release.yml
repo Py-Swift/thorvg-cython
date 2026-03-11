@@ -1,10 +1,9 @@
-# Build wheels with cibuildwheel on all platforms, publish to PyPI,
-# and attach as GitHub Release assets.
+# Build wheels with cibuildwheel on all platforms and attach them
+# as GitHub Release assets (no PyPI publish).
 #
 # Triggered when a GitHub Release is published.
-# Requires trusted publishing configured on PyPI.
 
-name: Upload Python Package
+name: Build & Attach Wheels to Release
 
 on:
   release:
@@ -151,15 +150,11 @@ jobs:
         name: sdist
         path: dist/*.tar.gz
 
-  publish:
+  attach-to-release:
     needs: [build-linux, build-macos, build-ios, build-android, build-windows, build-sdist]
     runs-on: ubuntu-latest
     permissions:
-      id-token: write     # trusted publishing to PyPI
       contents: write     # attach assets to the GitHub release
-
-    environment:
-      name: pypi
 
     steps:
     - name: Download all artifacts
@@ -171,12 +166,7 @@ jobs:
     - name: List collected files
       run: ls -lh dist/
 
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        packages-dir: dist/
-
-    - name: Attach wheels to GitHub Release
+    - name: Attach to GitHub Release
       uses: softprops/action-gh-release@v2
       with:
         files: dist/*
