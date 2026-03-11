@@ -105,7 +105,7 @@ jobs:
         name: wheels-android
         path: wheelhouse/*.whl
 
-  build-windows:
+  build-windows-x64:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
@@ -118,11 +118,31 @@ jobs:
       run: uv tool install cibuildwheel
 
     - name: Build wheels
-      run: cibuildwheel --platform windows --archs "AMD64 ARM64" --output-dir wheelhouse
+      run: cibuildwheel --platform windows --archs "AMD64" --output-dir wheelhouse
 
     - uses: actions/upload-artifact@v4
       with:
-        name: wheels-windows
+        name: wheels-windows-x64
+        path: wheelhouse/*.whl
+
+  build-windows-arm64:
+    runs-on: windows-arm64
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.13"
+    - uses: astral-sh/setup-uv@v5
+
+    - name: Install cibuildwheel
+      run: uv tool install cibuildwheel
+
+    - name: Build wheels
+      run: cibuildwheel --platform windows --archs "ARM64" --output-dir wheelhouse
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: wheels-windows-arm64
         path: wheelhouse/*.whl
 
   build-sdist:
@@ -142,7 +162,7 @@ jobs:
         path: dist/*.tar.gz
 
   attach-to-release:
-    needs: [build-linux, build-macos, build-ios, build-android, build-windows, build-sdist]
+    needs: [build-linux, build-macos, build-ios, build-android, build-windows-x64, build-windows-arm64, build-sdist]
     runs-on: ubuntu-latest
     permissions:
       contents: write     # attach assets to the GitHub release

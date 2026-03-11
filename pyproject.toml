@@ -41,7 +41,7 @@ before-all = "python {project}/tools/build_thorvg.py macos --thorvg-root={projec
 environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output/macos_fat", ANGLE_LIB_DIR = "thorvg/output/angle", MACOSX_DEPLOYMENT_TARGET = "11.0" }
 
 [tool.cibuildwheel.windows]
-before-all = "python {project}\\tools\\build_thorvg.py windows --arch=all --thorvg-root={project}\\thorvg --version=%THORVG_VERSION%"
+before-all = "python {project}\\tools\\build_thorvg.py windows --thorvg-root={project}\\thorvg --version=%THORVG_VERSION%"
 environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output" }
 
 [tool.cibuildwheel.ios]
