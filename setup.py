@@ -173,10 +173,12 @@ def _bundle_dylib(src_path: Path, dest_dir: Path) -> None:
     On macOS/iOS this also creates a versioned symlink if the install name
     references a versioned filename (e.g. libthorvg-1.1.dylib), and fixes
     the install_name to use @rpath/<basename> so delocate/the loader works.
+
+    Always overwrites an existing file — when cibuildwheel builds multiple
+    architectures they share the source tree, so each build must place the
+    correct arch's library.
     """
     dest = dest_dir / src_path.name
-    if dest.exists():
-        return
     # Always follow symlinks (copy the real file)
     real_src = src_path.resolve()
     shutil.copy2(str(real_src), str(dest))
