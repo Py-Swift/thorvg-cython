@@ -1239,9 +1239,14 @@ def main() -> None:
     # windows
     p_win = sub.add_parser("windows", help="Build for Windows")
     _add_common(p_win)
+
+    # Auto-detect native arch: ARM64 runner → arm64, otherwise x64
+    import platform as _plat
+    _default_win_arch = "arm64" if _plat.machine().upper() in ("ARM64", "AARCH64") else "x64"
+
     p_win.add_argument(
-        "--arch", default="x64", choices=["x64", "arm64", "all"],
-        help="Target architecture (default: x64)",
+        "--arch", default=_default_win_arch, choices=["x64", "arm64", "all"],
+        help=f"Target architecture (default: {_default_win_arch}, auto-detected)",
     )
 
     # download-angle
