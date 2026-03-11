@@ -396,15 +396,27 @@ elif sys.platform.startswith("win"):
     #  Windows: link against thorvg-1.dll via import lib.
     #
     #  Search order:
-    #    1. THORVG_LIB_DIR / thorvg-1.dll + thorvg-1.lib
-    #    2. output/windows_x64/
-    #    3. Fallback: linker search
+    #    1. THORVG_LIB_DIR / windows_{arch} / thorvg-1.dll
+    #    2. THORVG_LIB_DIR / thorvg-1.dll  (flat layout)
+    #    3. output/windows_{arch}/
+    #    4. Fallback: linker search
     # -----------------------------------------------------------------------
-    _lib_dir = Path(THORVG_LIB_DIR)
-    _win_dll = _lib_dir / "thorvg-1.dll"
-    _win_default_dir = THORVG_ROOT / "output" / "windows_x64"
+    _host_plat = os.environ.get("_PYTHON_HOST_PLATFORM", "") or sysconfig.get_platform()
+    if "arm64" in _host_plat:
+        _win_arch = "arm64"
+    else:
+        _win_arch = "x64"
+    print(f"[setup.py] Windows arch={_win_arch}, _host_plat={_host_plat!r}")
 
-    if _win_dll.exists():
+    _lib_dir = Path(THORVG_LIB_DIR)
+    _win_arch_dir = _lib_dir / f"windows_{_win_arch}"
+    _win_dll_arch = _win_arch_dir / "thorvg-1.dll"
+    _win_dll_flat = _lib_dir / "thorvg-1.dll"
+    _win_default_dir = THORVG_ROOT / "output" / f"windows_{_win_arch}"
+
+    if _win_dll_arch.exists():
+        _found_dir = _win_arch_dir
+    elif _win_dll_flat.exists():
         _found_dir = _lib_dir
     elif (_win_default_dir / "thorvg-1.dll").exists():
         _found_dir = _win_default_dir
