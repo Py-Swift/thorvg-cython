@@ -230,6 +230,19 @@ jobs:
         packages-dir: dist/
 
     - name: Attach wheels to GitHub Release
-      uses: softprops/action-gh-release@v2
-      with:
-        files: dist/*
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        tag="${{ github.event.release.tag_name }}"
+        for f in dist/*; do
+          echo "Uploading $(basename "$f") ..."
+          for attempt in 1 2 3; do
+            if gh release upload "$tag" "$f" --clobber; then
+              echo "  ✅ $(basename "$f")"
+              break
+            fi
+            echo "  ⚠️  attempt $attempt failed, retrying in 5s..."
+            sleep 5
+          done
+        done
