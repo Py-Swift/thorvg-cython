@@ -33,8 +33,9 @@ test-command = "pytest {project}/tests -v"
 [tool.cibuildwheel.linux]
 before-all = "python {project}/tools/build_thorvg.py linux --thorvg-root={project}/thorvg --version=$THORVG_VERSION"
 # auditwheel needs to find the versioned SONAME (libthorvg-1.so.1) at repair time
-repair-wheel-command = "LD_LIBRARY_PATH={project}/thorvg/output/linux_x86_64 auditwheel repair -w {dest_dir} {wheel}"
-environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output/linux_x86_64" }
+# $(uname -m) resolves to x86_64 or aarch64 inside the manylinux container
+repair-wheel-command = "LD_LIBRARY_PATH={project}/thorvg/output/linux_$(uname -m) auditwheel repair -w {dest_dir} {wheel}"
+environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1", THORVG_LIB_DIR = "thorvg/output" }
 
 [tool.cibuildwheel.macos]
 before-all = "python {project}/tools/build_thorvg.py macos --thorvg-root={project}/thorvg --version=$THORVG_VERSION"

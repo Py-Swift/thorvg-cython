@@ -479,8 +479,25 @@ elif _is_android_build():
 else:
     # -----------------------------------------------------------------------
     #  Linux / other: link against libthorvg-1.so.
+    #
+    #  Arch detection mirrors Android/Windows: when THORVG_LIB_DIR points
+    #  to throvg/output (parent), we look in linux_{arch}/ subdirectory.
     # -----------------------------------------------------------------------
+    import platform as _plat_mod
+    _host_plat = os.environ.get("_PYTHON_HOST_PLATFORM", "") or sysconfig.get_platform()
+    if "aarch64" in _host_plat or "arm64" in _host_plat:
+        _linux_arch = "aarch64"
+    elif "x86_64" in _host_plat:
+        _linux_arch = "x86_64"
+    else:
+        _linux_arch = _plat_mod.machine()
+    print(f"[setup.py] Linux arch={_linux_arch}, _host_plat={_host_plat!r}")
+
     _lib_dir = Path(THORVG_LIB_DIR)
+    _linux_arch_dir = _lib_dir / f"linux_{_linux_arch}"
+    if _linux_arch_dir.exists():
+        _lib_dir = _linux_arch_dir
+
     _linux_so = _lib_dir / "libthorvg-1.so"
 
     if _linux_so.exists():
