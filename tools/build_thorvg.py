@@ -433,15 +433,19 @@ def _inject_cross_list(content: str, key: str, values: list[str]) -> str:
     """
     import re
     escaped = [f"'{v}'" for v in values]
-    addition = ", " + ", ".join(escaped)
 
     pattern = re.compile(
-        rf"^(\s*{re.escape(key)}\s*=\s*\[.*?)(]\s*)$",
+        rf"^(\s*{re.escape(key)}\s*=\s*\[)(.*?)(]\s*)$",
         re.MULTILINE,
     )
     match = pattern.search(content)
     if match:
-        content = content[:match.end(1)] + addition + content[match.start(2):]
+        existing = match.group(2).strip()
+        if existing:
+            addition = ", " + ", ".join(escaped)
+        else:
+            addition = ", ".join(escaped)
+        content = content[:match.end(2)] + addition + content[match.start(3):]
     else:
         print(f"  [openmp] Warning: could not find '{key}' in cross file")
     return content
@@ -852,6 +856,8 @@ def build_android(root: Path, gpu: str, *, ndk: str = "",
                 "cpp_link_args = ['-ldl']",
                 "cpp_link_args = []",
             )
+        # Statically link libomp so the wheel doesn't need libomp.so at runtime
+        content = _inject_cross_list(content, "cpp_link_args", ["-static-openmp"])
         out.write_text(content)
         print(f"  Generated cross file: {out}")
 
