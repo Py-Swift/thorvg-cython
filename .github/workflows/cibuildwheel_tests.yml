@@ -97,13 +97,35 @@ jobs:
     - name: Install cibuildwheel
       run: uv tool install cibuildwheel
 
+    - name: Pre-build thorvg for iOS (creates xcframeworks)
+      run: python3 tools/build_thorvg.py ios --thorvg-root=thorvg --version=1.0.1
+
+    - name: Verify xcframeworks exist
+      run: |
+        ls -la thorvg/output/thorvg.xcframework/
+        ls -la thorvg/output/libomp.xcframework/
+
     - name: Build wheels
       run: cibuildwheel --platform ios --archs "arm64_iphoneos arm64_iphonesimulator x86_64_iphonesimulator" --output-dir wheelhouse
       env:
         CIBW_BUILD: "cp313-ios_*"
 
     - name: Inject xcframeworks into iOS wheels
-      run: python tools/add-ios-frameworks.py wheelhouse
+      run: |
+        python tools/add-ios-frameworks.py wheelhouse \
+          --xcframework thorvg/output/thorvg.xcframework \
+          --xcframework thorvg/output/libomp.xcframework
+
+    - name: Verify iOS wheel sizes (xcframeworks must be bundled)
+      run: |
+        for whl in wheelhouse/*ios*.whl; do
+          size=$(stat -f%z "$whl")
+          if [ "$size" -lt 500000 ]; then
+            echo "ERROR: $whl is only $size bytes — xcframeworks likely missing"
+            exit 1
+          fi
+          echo "OK: $whl ($size bytes)"
+        done
 
     - name: Test iOS wheels on Simulator
       run: python tools/ios_testbench.py test
