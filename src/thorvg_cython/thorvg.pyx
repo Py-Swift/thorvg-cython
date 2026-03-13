@@ -228,7 +228,7 @@ cdef class PixelBuffer:
         """Raw pointer as int — for advanced / interop use."""
         return <unsigned long>self._data
 
-    def clear(self):
+    cpdef clear(self):
         """Zero out all pixels."""
         memset(self._data, 0, self._nbytes)
 
@@ -318,52 +318,52 @@ cdef class Paint:
         self._owned = owned
 
     # -- reference counting --
-    def ref(self):
+    cpdef ref(self):
         return tvg.tvg_paint_ref(self._p)
 
-    def deref(self, bint free=False):
+    cpdef deref(self, bint free=False):
         return tvg.tvg_paint_unref(self._p, free)
 
-    def get_ref(self):
+    cpdef get_ref(self):
         return tvg.tvg_paint_get_ref(self._p)
 
     # -- visibility --
-    def set_visible(self, bint visible):
+    cpdef set_visible(self, bint visible):
         return Result(tvg.tvg_paint_set_visible(self._p, visible))
 
-    def get_visible(self):
+    cpdef get_visible(self):
         return tvg.tvg_paint_get_visible(self._p)
 
     # -- transforms --
-    def scale(self, float factor):
+    cpdef scale(self, float factor):
         return Result(tvg.tvg_paint_scale(self._p, factor))
 
-    def rotate(self, float degree):
+    cpdef rotate(self, float degree):
         return Result(tvg.tvg_paint_rotate(self._p, degree))
 
-    def translate(self, float x, float y):
+    cpdef translate(self, float x, float y):
         return Result(tvg.tvg_paint_translate(self._p, x, y))
 
-    def set_transform(self, m):
+    cpdef set_transform(self, m):
         cdef tvg.Tvg_Matrix cm = _mat_to_c(m)
         return Result(tvg.tvg_paint_set_transform(self._p, &cm))
 
-    def get_transform(self):
+    cpdef get_transform(self):
         cdef tvg.Tvg_Matrix cm
         cdef tvg.Tvg_Result r = tvg.tvg_paint_get_transform(self._p, &cm)
         return Result(r), _mat_from_c(cm)
 
     # -- opacity --
-    def set_opacity(self, uint8_t opacity):
+    cpdef set_opacity(self, uint8_t opacity):
         return Result(tvg.tvg_paint_set_opacity(self._p, opacity))
 
-    def get_opacity(self):
+    cpdef get_opacity(self):
         cdef uint8_t opacity
         cdef tvg.Tvg_Result r = tvg.tvg_paint_get_opacity(self._p, &opacity)
         return Result(r), opacity
 
     # -- duplicate --
-    def duplicate(self):
+    cpdef duplicate(self):
         cdef tvg.Tvg_Paint dup = tvg.tvg_paint_duplicate(self._p)
         if dup == NULL:
             return None
@@ -372,27 +372,27 @@ cdef class Paint:
         return p
 
     # -- hit-test --
-    def intersects(self, int x, int y, int w, int h):
+    cpdef intersects(self, int x, int y, int w, int h):
         return tvg.tvg_paint_intersects(self._p, x, y, w, h)
 
     # -- bounding boxes --
-    def get_aabb(self):
+    cpdef get_aabb(self):
         cdef float x, y, w, h
         cdef tvg.Tvg_Result r = tvg.tvg_paint_get_aabb(self._p, &x, &y, &w, &h)
         return Result(r), x, y, w, h
 
-    def get_obb(self):
+    cpdef get_obb(self):
         cdef tvg.Tvg_Point pt4[4]
         cdef tvg.Tvg_Result r = tvg.tvg_paint_get_obb(self._p, pt4)
         pts = [Point(pt4[i].x, pt4[i].y) for i in range(4)]
         return Result(r), pts
 
     # -- masking --
-    def set_mask_method(self, Paint target, int method):
+    cpdef set_mask_method(self, Paint target, int method):
         return Result(tvg.tvg_paint_set_mask_method(
             self._p, target._p, <tvg.Tvg_Mask_Method>method))
 
-    def get_mask_method(self):
+    cpdef get_mask_method(self):
         cdef tvg.Tvg_Paint target = NULL
         # Zero-init: C API writes only 1 byte (MaskMethod is uint8_t)
         # into a 4-byte Tvg_Mask_Method via reinterpret_cast
@@ -402,10 +402,10 @@ cdef class Paint:
         return Result(r), MaskMethod(method)
 
     # -- clipping --
-    def set_clip(self, Paint clipper):
+    cpdef set_clip(self, Paint clipper):
         return Result(tvg.tvg_paint_set_clip(self._p, clipper._p))
 
-    def get_clip(self):
+    cpdef get_clip(self):
         cdef tvg.Tvg_Paint cp = tvg.tvg_paint_get_clip(self._p)
         if cp == NULL:
             return None
@@ -413,7 +413,7 @@ cdef class Paint:
         p._set(cp, False)
         return p
 
-    def get_parent(self):
+    cpdef get_parent(self):
         cdef tvg.Tvg_Paint pp = tvg.tvg_paint_get_parent(self._p)
         if pp == NULL:
             return None
@@ -421,16 +421,16 @@ cdef class Paint:
         p._set(pp, False)
         return p
 
-    def get_type(self):
+    cpdef get_type(self):
         cdef tvg.Tvg_Type t
         cdef tvg.Tvg_Result r = tvg.tvg_paint_get_type(self._p, &t)
         return Result(r), TvgType(t)
 
-    def set_blend_method(self, int method):
+    cpdef set_blend_method(self, int method):
         return Result(tvg.tvg_paint_set_blend_method(
             self._p, <tvg.Tvg_Blend_Method>method))
 
-    def _rel(self):
+    cpdef _rel(self):
         return Result(tvg.tvg_paint_rel(self._p))
 
 
@@ -446,34 +446,34 @@ cdef class Canvas:
     cdef void _set(self, tvg.Tvg_Canvas c):
         self._c = c
 
-    def destroy(self):
+    cpdef destroy(self):
         return Result(tvg.tvg_canvas_destroy(self._c))
 
-    def add(self, Paint paint):
+    cpdef add(self, Paint paint):
         return Result(tvg.tvg_canvas_add(self._c, paint._p))
 
-    def insert(self, Paint target, Paint at=None):
+    cpdef insert(self, Paint target, Paint at=None):
         cdef tvg.Tvg_Paint at_p = NULL
         if at is not None:
             at_p = at._p
         return Result(tvg.tvg_canvas_insert(self._c, target._p, at_p))
 
-    def remove(self, Paint paint=None):
+    cpdef remove(self, Paint paint=None):
         cdef tvg.Tvg_Paint pp = NULL
         if paint is not None:
             pp = paint._p
         return Result(tvg.tvg_canvas_remove(self._c, pp))
 
-    def update(self):
+    cpdef update(self):
         return Result(tvg.tvg_canvas_update(self._c))
 
-    def draw(self, bint clear=True):
+    cpdef draw(self, bint clear=True):
         return Result(tvg.tvg_canvas_draw(self._c, clear))
 
-    def sync(self):
+    cpdef sync(self):
         return Result(tvg.tvg_canvas_sync(self._c))
 
-    def set_viewport(self, int x, int y, int w, int h):
+    cpdef set_viewport(self, int x, int y, int w, int h):
         return Result(tvg.tvg_canvas_set_viewport(self._c, x, y, w, h))
 
 
@@ -489,7 +489,7 @@ cdef class Gradient:
     cdef void _set(self, tvg.Tvg_Gradient g):
         self._g = g
 
-    def set_color_stops(self, stops):
+    cpdef set_color_stops(self, stops):
         cdef int n = len(stops)
         cdef tvg.Tvg_Color_Stop* cs = <tvg.Tvg_Color_Stop*>malloc(
             n * sizeof(tvg.Tvg_Color_Stop))
@@ -504,7 +504,7 @@ cdef class Gradient:
         finally:
             free(cs)
 
-    def get_color_stops(self):
+    cpdef get_color_stops(self):
         cdef const tvg.Tvg_Color_Stop* cs = NULL
         cdef uint32_t cnt = 0
         cdef tvg.Tvg_Result r = tvg.tvg_gradient_get_color_stops(self._g, &cs, &cnt)
@@ -512,30 +512,30 @@ cdef class Gradient:
                for i in range(cnt)]
         return Result(r), out
 
-    def set_spread(self, int spread):
+    cpdef set_spread(self, int spread):
         return Result(tvg.tvg_gradient_set_spread(
             self._g, <tvg.Tvg_Stroke_Fill>spread))
 
-    def get_spread(self):
+    cpdef get_spread(self):
         cdef tvg.Tvg_Stroke_Fill spread
         cdef tvg.Tvg_Result r = tvg.tvg_gradient_get_spread(self._g, &spread)
         return Result(r), StrokeFill(spread)
 
-    def set_transform(self, m):
+    cpdef set_transform(self, m):
         cdef tvg.Tvg_Matrix cm = _mat_to_c(m)
         return Result(tvg.tvg_gradient_set_transform(self._g, &cm))
 
-    def get_transform(self):
+    cpdef get_transform(self):
         cdef tvg.Tvg_Matrix cm
         cdef tvg.Tvg_Result r = tvg.tvg_gradient_get_transform(self._g, &cm)
         return Result(r), _mat_from_c(cm)
 
-    def get_type(self):
+    cpdef get_type(self):
         cdef tvg.Tvg_Type t
         cdef tvg.Tvg_Result r = tvg.tvg_gradient_get_type(self._g, &t)
         return Result(r), TvgType(t)
 
-    def duplicate(self):
+    cpdef duplicate(self):
         cdef tvg.Tvg_Gradient dup = tvg.tvg_gradient_duplicate(self._g)
         if dup == NULL:
             return None
@@ -543,7 +543,7 @@ cdef class Gradient:
         g._set(dup)
         return g
 
-    def _del(self):
+    cpdef _del(self):
         return Result(tvg.tvg_gradient_del(self._g))
 
 
@@ -553,10 +553,10 @@ cdef class LinearGradient(Gradient):
         if x1 != 0 or y1 != 0 or x2 != 0 or y2 != 0:
             tvg.tvg_linear_gradient_set(self._g, x1, y1, x2, y2)
 
-    def set(self, float x1, float y1, float x2, float y2):
+    cpdef set(self, float x1, float y1, float x2, float y2):
         return Result(tvg.tvg_linear_gradient_set(self._g, x1, y1, x2, y2))
 
-    def get(self):
+    cpdef get(self):
         cdef float x1, y1, x2, y2
         cdef tvg.Tvg_Result r = tvg.tvg_linear_gradient_get(
             self._g, &x1, &y1, &x2, &y2)
@@ -570,12 +570,12 @@ cdef class RadialGradient(Gradient):
         if cx != 0 or cy != 0 or radius != 0:
             tvg.tvg_radial_gradient_set(self._g, cx, cy, radius, fx, fy, fr)
 
-    def set(self, float cx, float cy, float r,
+    cpdef set(self, float cx, float cy, float r,
             float fx=0, float fy=0, float fr=0):
         return Result(tvg.tvg_radial_gradient_set(
             self._g, cx, cy, r, fx, fy, fr))
 
-    def get(self):
+    cpdef get(self):
         cdef float cx, cy, r, fx, fy, fr
         cdef tvg.Tvg_Result rv = tvg.tvg_radial_gradient_get(
             self._g, &cx, &cy, &r, &fx, &fy, &fr)
@@ -591,34 +591,34 @@ cdef class Shape(Paint):
         self._p = tvg.tvg_shape_new()
 
     # -- path --
-    def reset(self):
+    cpdef reset(self):
         return Result(tvg.tvg_shape_reset(self._p))
 
-    def move_to(self, float x, float y):
+    cpdef move_to(self, float x, float y):
         return Result(tvg.tvg_shape_move_to(self._p, x, y))
 
-    def line_to(self, float x, float y):
+    cpdef line_to(self, float x, float y):
         return Result(tvg.tvg_shape_line_to(self._p, x, y))
 
-    def cubic_to(self, float cx1, float cy1, float cx2, float cy2,
+    cpdef cubic_to(self, float cx1, float cy1, float cx2, float cy2,
                  float x, float y):
         return Result(tvg.tvg_shape_cubic_to(
             self._p, cx1, cy1, cx2, cy2, x, y))
 
-    def close(self):
+    cpdef close(self):
         return Result(tvg.tvg_shape_close(self._p))
 
-    def append_rect(self, float x, float y, float w, float h,
+    cpdef append_rect(self, float x, float y, float w, float h,
                     float rx=0, float ry=0, bint cw=True):
         return Result(tvg.tvg_shape_append_rect(
             self._p, x, y, w, h, rx, ry, cw))
 
-    def append_circle(self, float cx, float cy, float rx, float ry,
+    cpdef append_circle(self, float cx, float cy, float rx, float ry,
                       bint cw=True):
         return Result(tvg.tvg_shape_append_circle(
             self._p, cx, cy, rx, ry, cw))
 
-    def append_path(self, commands, points):
+    cpdef append_path(self, commands, points):
         cdef int cmd_cnt = len(commands)
         cdef int pts_cnt = len(points)
         cdef tvg.Tvg_Path_Command* cmds = <tvg.Tvg_Path_Command*>malloc(
@@ -639,7 +639,7 @@ cdef class Shape(Paint):
         finally:
             free(cmds); free(pts)
 
-    def get_path(self):
+    cpdef get_path(self):
         cdef const tvg.Tvg_Path_Command* cmds = NULL
         cdef uint32_t cmd_cnt = 0
         cdef const tvg.Tvg_Point* pts = NULL
@@ -651,28 +651,28 @@ cdef class Shape(Paint):
         return Result(r), out_cmds, out_pts
 
     # -- stroke --
-    def set_stroke_width(self, float width):
+    cpdef set_stroke_width(self, float width):
         return Result(tvg.tvg_shape_set_stroke_width(self._p, width))
 
-    def get_stroke_width(self):
+    cpdef get_stroke_width(self):
         cdef float w
         cdef tvg.Tvg_Result r = tvg.tvg_shape_get_stroke_width(self._p, &w)
         return Result(r), w
 
-    def set_stroke_color(self, uint8_t r, uint8_t g, uint8_t b,
+    cpdef set_stroke_color(self, uint8_t r, uint8_t g, uint8_t b,
                          uint8_t a=255):
         return Result(tvg.tvg_shape_set_stroke_color(self._p, r, g, b, a))
 
-    def get_stroke_color(self):
+    cpdef get_stroke_color(self):
         cdef uint8_t r, g, b, a
         cdef tvg.Tvg_Result rv = tvg.tvg_shape_get_stroke_color(
             self._p, &r, &g, &b, &a)
         return Result(rv), r, g, b, a
 
-    def set_stroke_gradient(self, Gradient grad):
+    cpdef set_stroke_gradient(self, Gradient grad):
         return Result(tvg.tvg_shape_set_stroke_gradient(self._p, grad._g))
 
-    def get_stroke_gradient(self):
+    cpdef get_stroke_gradient(self):
         cdef tvg.Tvg_Gradient g = NULL
         cdef tvg.Tvg_Result r = tvg.tvg_shape_get_stroke_gradient(
             self._p, &g)
@@ -682,7 +682,7 @@ cdef class Shape(Paint):
         gr._set(g)
         return Result(r), gr
 
-    def set_stroke_dash(self, pattern, float offset=0):
+    cpdef set_stroke_dash(self, pattern, float offset=0):
         cdef int n = len(pattern)
         cdef float* dp = <float*>malloc(n * sizeof(float))
         if dp == NULL:
@@ -695,7 +695,7 @@ cdef class Shape(Paint):
         finally:
             free(dp)
 
-    def get_stroke_dash(self):
+    cpdef get_stroke_dash(self):
         cdef const float* dp = NULL
         cdef uint32_t cnt = 0
         cdef float offset = 0
@@ -704,65 +704,65 @@ cdef class Shape(Paint):
         out = [dp[i] for i in range(cnt)]
         return Result(r), out, offset
 
-    def set_stroke_cap(self, int cap):
+    cpdef set_stroke_cap(self, int cap):
         return Result(tvg.tvg_shape_set_stroke_cap(
             self._p, <tvg.Tvg_Stroke_Cap>cap))
 
-    def get_stroke_cap(self):
+    cpdef get_stroke_cap(self):
         cdef tvg.Tvg_Stroke_Cap cap
         cdef tvg.Tvg_Result r = tvg.tvg_shape_get_stroke_cap(self._p, &cap)
         return Result(r), StrokeCap(cap)
 
-    def set_stroke_join(self, int join):
+    cpdef set_stroke_join(self, int join):
         return Result(tvg.tvg_shape_set_stroke_join(
             self._p, <tvg.Tvg_Stroke_Join>join))
 
-    def get_stroke_join(self):
+    cpdef get_stroke_join(self):
         cdef tvg.Tvg_Stroke_Join join
         cdef tvg.Tvg_Result r = tvg.tvg_shape_get_stroke_join(self._p, &join)
         return Result(r), StrokeJoin(join)
 
-    def set_stroke_miterlimit(self, float ml):
+    cpdef set_stroke_miterlimit(self, float ml):
         return Result(tvg.tvg_shape_set_stroke_miterlimit(self._p, ml))
 
-    def get_stroke_miterlimit(self):
+    cpdef get_stroke_miterlimit(self):
         cdef float ml
         cdef tvg.Tvg_Result r = tvg.tvg_shape_get_stroke_miterlimit(
             self._p, &ml)
         return Result(r), ml
 
-    def set_trimpath(self, float begin, float end,
+    cpdef set_trimpath(self, float begin, float end,
                      bint simultaneous=False):
         return Result(tvg.tvg_shape_set_trimpath(
             self._p, begin, end, simultaneous))
 
     # -- fill --
-    def set_fill_color(self, uint8_t r, uint8_t g, uint8_t b,
+    cpdef set_fill_color(self, uint8_t r, uint8_t g, uint8_t b,
                        uint8_t a=255):
         return Result(tvg.tvg_shape_set_fill_color(self._p, r, g, b, a))
 
-    def get_fill_color(self):
+    cpdef get_fill_color(self):
         cdef uint8_t r, g, b, a
         cdef tvg.Tvg_Result rv = tvg.tvg_shape_get_fill_color(
             self._p, &r, &g, &b, &a)
         return Result(rv), r, g, b, a
 
-    def set_fill_rule(self, int rule):
+    cpdef set_fill_rule(self, int rule):
         return Result(tvg.tvg_shape_set_fill_rule(
             self._p, <tvg.Tvg_Fill_Rule>rule))
 
-    def get_fill_rule(self):
+    cpdef get_fill_rule(self):
         cdef tvg.Tvg_Fill_Rule rule
         cdef tvg.Tvg_Result r = tvg.tvg_shape_get_fill_rule(self._p, &rule)
         return Result(r), FillRule(rule)
 
-    def set_paint_order(self, bint stroke_first):
+    cpdef set_paint_order(self, bint stroke_first):
         return Result(tvg.tvg_shape_set_paint_order(self._p, stroke_first))
 
-    def set_gradient(self, Gradient grad):
+    cpdef set_gradient(self, Gradient grad):
         return Result(tvg.tvg_shape_set_gradient(self._p, grad._g))
 
-    def get_gradient(self):
+    cpdef get_gradient(self):
         cdef tvg.Tvg_Gradient g = NULL
         cdef tvg.Tvg_Result r = tvg.tvg_shape_get_gradient(self._p, &g)
         if g == NULL:
@@ -791,17 +791,17 @@ cdef class Picture(Paint):
         pic._owned = owned
         return pic
 
-    def load(self, str path):
+    cpdef load(self, str path):
         cdef bytes b = path.encode("utf-8")
         return Result(tvg.tvg_picture_load(self._p, b))
 
-    def load_raw(self, unsigned long data_ptr, uint32_t w, uint32_t h,
+    cpdef load_raw(self, unsigned long data_ptr, uint32_t w, uint32_t h,
                  int cs=0, bint copy=True):
         return Result(tvg.tvg_picture_load_raw(
             self._p, <const uint32_t*><void*>data_ptr, w, h,
             <tvg.Tvg_Colorspace>cs, copy))
 
-    def load_data(self, bytes data, str mimetype="", str rpath="",
+    cpdef load_data(self, bytes data, str mimetype="", str rpath="",
                   bint copy=True):
         cdef const char* mt_c = NULL
         cdef const char* rp_c = NULL
@@ -815,23 +815,23 @@ cdef class Picture(Paint):
         return Result(tvg.tvg_picture_load_data(
             self._p, data, len(data), mt_c, rp_c, copy))
 
-    def set_size(self, float w, float h):
+    cpdef set_size(self, float w, float h):
         return Result(tvg.tvg_picture_set_size(self._p, w, h))
 
-    def get_size(self):
+    cpdef get_size(self):
         cdef float w, h
         cdef tvg.Tvg_Result r = tvg.tvg_picture_get_size(self._p, &w, &h)
         return Result(r), w, h
 
-    def set_origin(self, float x, float y):
+    cpdef set_origin(self, float x, float y):
         return Result(tvg.tvg_picture_set_origin(self._p, x, y))
 
-    def get_origin(self):
+    cpdef get_origin(self):
         cdef float x, y
         cdef tvg.Tvg_Result r = tvg.tvg_picture_get_origin(self._p, &x, &y)
         return Result(r), x, y
 
-    def get_paint(self, uint32_t id):
+    cpdef get_paint(self, uint32_t id):
         cdef tvg.Tvg_Paint pp = tvg.tvg_picture_get_paint(self._p, id)
         if pp == NULL:
             return None
@@ -848,46 +848,46 @@ cdef class Scene(Paint):
     def __cinit__(self):
         self._p = tvg.tvg_scene_new()
 
-    def add(self, Paint paint):
+    cpdef add(self, Paint paint):
         return Result(tvg.tvg_scene_add(self._p, paint._p))
 
-    def insert(self, Paint target, Paint at=None):
+    cpdef insert(self, Paint target, Paint at=None):
         cdef tvg.Tvg_Paint at_p = NULL
         if at is not None:
             at_p = at._p
         return Result(tvg.tvg_scene_insert(self._p, target._p, at_p))
 
-    def remove(self, Paint paint=None):
+    cpdef remove(self, Paint paint=None):
         cdef tvg.Tvg_Paint pp = NULL
         if paint is not None:
             pp = paint._p
         return Result(tvg.tvg_scene_remove(self._p, pp))
 
-    def clear_effects(self):
+    cpdef clear_effects(self):
         return Result(tvg.tvg_scene_clear_effects(self._p))
 
-    def add_effect_gaussian_blur(self, double sigma, int direction=0,
+    cpdef add_effect_gaussian_blur(self, double sigma, int direction=0,
                                  int border=0, int quality=50):
         return Result(tvg.tvg_scene_add_effect_gaussian_blur(
             self._p, sigma, direction, border, quality))
 
-    def add_effect_drop_shadow(self, int r, int g, int b, int a,
+    cpdef add_effect_drop_shadow(self, int r, int g, int b, int a,
                                double angle=0, double distance=0,
                                double sigma=0, int quality=50):
         return Result(tvg.tvg_scene_add_effect_drop_shadow(
             self._p, r, g, b, a, angle, distance, sigma, quality))
 
-    def add_effect_fill(self, int r, int g, int b, int a):
+    cpdef add_effect_fill(self, int r, int g, int b, int a):
         return Result(tvg.tvg_scene_add_effect_fill(self._p, r, g, b, a))
 
-    def add_effect_tint(self, int black_r, int black_g, int black_b,
+    cpdef add_effect_tint(self, int black_r, int black_g, int black_b,
                         int white_r, int white_g, int white_b,
                         double intensity=1.0):
         return Result(tvg.tvg_scene_add_effect_tint(
             self._p, black_r, black_g, black_b,
             white_r, white_g, white_b, intensity))
 
-    def add_effect_tritone(self, int sr, int sg, int sb,
+    cpdef add_effect_tritone(self, int sr, int sg, int sb,
                            int mr, int mg, int mb,
                            int hr, int hg, int hb,
                            double blend=0.5):
@@ -903,43 +903,43 @@ cdef class Text(Paint):
     def __cinit__(self):
         self._p = tvg.tvg_text_new()
 
-    def set_font(self, str name):
+    cpdef set_font(self, str name):
         cdef bytes b = name.encode("utf-8")
         return Result(tvg.tvg_text_set_font(self._p, b))
 
-    def set_size(self, float size):
+    cpdef set_size(self, float size):
         return Result(tvg.tvg_text_set_size(self._p, size))
 
-    def set_text(self, str utf8):
+    cpdef set_text(self, str utf8):
         cdef bytes b = utf8.encode("utf-8")
         return Result(tvg.tvg_text_set_text(self._p, b))
 
-    def align(self, float x, float y):
+    cpdef align(self, float x, float y):
         return Result(tvg.tvg_text_align(self._p, x, y))
 
-    def layout(self, float w, float h):
+    cpdef layout(self, float w, float h):
         return Result(tvg.tvg_text_layout(self._p, w, h))
 
-    def wrap_mode(self, int mode):
+    cpdef wrap_mode(self, int mode):
         return Result(tvg.tvg_text_wrap_mode(
             self._p, <tvg.Tvg_Text_Wrap>mode))
 
-    def spacing(self, float letter, float line):
+    cpdef spacing(self, float letter, float line):
         return Result(tvg.tvg_text_spacing(self._p, letter, line))
 
-    def set_italic(self, float shear):
+    cpdef set_italic(self, float shear):
         return Result(tvg.tvg_text_set_italic(self._p, shear))
 
-    def set_outline(self, float width, uint8_t r, uint8_t g, uint8_t b):
+    cpdef set_outline(self, float width, uint8_t r, uint8_t g, uint8_t b):
         return Result(tvg.tvg_text_set_outline(self._p, width, r, g, b))
 
-    def set_color(self, uint8_t r, uint8_t g, uint8_t b):
+    cpdef set_color(self, uint8_t r, uint8_t g, uint8_t b):
         return Result(tvg.tvg_text_set_color(self._p, r, g, b))
 
-    def set_gradient(self, Gradient grad):
+    cpdef set_gradient(self, Gradient grad):
         return Result(tvg.tvg_text_set_gradient(self._p, grad._g))
 
-    def get_text_metrics(self):
+    cpdef get_text_metrics(self):
         cdef tvg.Tvg_Text_Metrics m
         cdef tvg.Tvg_Result r = tvg.tvg_text_get_metrics(self._p, &m)
         return Result(r), TextMetrics(m.ascent, m.descent, m.linegap, m.advance)
@@ -975,40 +975,40 @@ cdef class Animation:
     def __cinit__(self):
         self._a = tvg.tvg_animation_new()
 
-    def set_frame(self, float no):
+    cpdef set_frame(self, float no):
         return Result(tvg.tvg_animation_set_frame(self._a, no))
 
-    def get_picture(self):
+    cpdef get_picture(self):
         cdef tvg.Tvg_Paint pp = tvg.tvg_animation_get_picture(self._a)
         return Picture._wrap(pp, False)
 
-    def get_frame(self):
+    cpdef get_frame(self):
         cdef float no
         cdef tvg.Tvg_Result r = tvg.tvg_animation_get_frame(self._a, &no)
         return Result(r), no
 
-    def get_total_frame(self):
+    cpdef get_total_frame(self):
         cdef float total
         cdef tvg.Tvg_Result r = tvg.tvg_animation_get_total_frame(
             self._a, &total)
         return Result(r), total
 
-    def get_duration(self):
+    cpdef get_duration(self):
         cdef float dur
         cdef tvg.Tvg_Result r = tvg.tvg_animation_get_duration(
             self._a, &dur)
         return Result(r), dur
 
-    def set_segment(self, float begin, float end):
+    cpdef set_segment(self, float begin, float end):
         return Result(tvg.tvg_animation_set_segment(self._a, begin, end))
 
-    def get_segment(self):
+    cpdef get_segment(self):
         cdef float begin, end
         cdef tvg.Tvg_Result r = tvg.tvg_animation_get_segment(
             self._a, &begin, &end)
         return Result(r), begin, end
 
-    def _del(self):
+    cpdef _del(self):
         return Result(tvg.tvg_animation_del(self._a))
 
 
@@ -1021,44 +1021,44 @@ cdef class LottieAnimation(Animation):
         # Override parent — use lottie-specific constructor
         self._a = tvg.tvg_lottie_animation_new()
 
-    def gen_slot(self, str slot):
+    cpdef gen_slot(self, str slot):
         cdef bytes b = slot.encode("utf-8")
         return tvg.tvg_lottie_animation_gen_slot(self._a, b)
 
-    def apply_slot(self, uint32_t id):
+    cpdef apply_slot(self, uint32_t id):
         return Result(tvg.tvg_lottie_animation_apply_slot(self._a, id))
 
-    def del_slot(self, uint32_t id):
+    cpdef del_slot(self, uint32_t id):
         return Result(tvg.tvg_lottie_animation_del_slot(self._a, id))
 
-    def set_marker(self, str marker):
+    cpdef set_marker(self, str marker):
         cdef bytes b = marker.encode("utf-8")
         return Result(tvg.tvg_lottie_animation_set_marker(self._a, b))
 
-    def get_markers_cnt(self):
+    cpdef get_markers_cnt(self):
         cdef uint32_t cnt
         cdef tvg.Tvg_Result r = tvg.tvg_lottie_animation_get_markers_cnt(
             self._a, &cnt)
         return Result(r), cnt
 
-    def get_marker(self, uint32_t idx):
+    cpdef get_marker(self, uint32_t idx):
         cdef const char* marker = NULL
         cdef tvg.Tvg_Result r = tvg.tvg_lottie_animation_get_marker(
             self._a, idx, &marker)
         name = marker.decode("utf-8") if marker != NULL else None
         return Result(r), name
 
-    def tween(self, float from_, float to, float progress):
+    cpdef tween(self, float from_, float to, float progress):
         return Result(tvg.tvg_lottie_animation_tween(
             self._a, from_, to, progress))
 
-    def assign(self, str layer, uint32_t ix, str var, float val):
+    cpdef assign(self, str layer, uint32_t ix, str var, float val):
         cdef bytes lb = layer.encode("utf-8")
         cdef bytes vb = var.encode("utf-8")
         return Result(tvg.tvg_lottie_animation_assign(
             self._a, lb, ix, vb, val))
 
-    def set_quality(self, uint8_t value):
+    cpdef set_quality(self, uint8_t value):
         return Result(tvg.tvg_lottie_animation_set_quality(self._a, value))
 
 
@@ -1071,20 +1071,20 @@ cdef class Saver:
     def __cinit__(self):
         self._s = tvg.tvg_saver_new()
 
-    def save_paint(self, Paint paint, str path, uint32_t quality=100):
+    cpdef save_paint(self, Paint paint, str path, uint32_t quality=100):
         cdef bytes b = path.encode("utf-8")
         return Result(tvg.tvg_saver_save_paint(self._s, paint._p, b, quality))
 
-    def save_animation(self, Animation animation, str path,
+    cpdef save_animation(self, Animation animation, str path,
                        uint32_t quality=100, uint32_t fps=0):
         cdef bytes b = path.encode("utf-8")
         return Result(tvg.tvg_saver_save_animation(
             self._s, animation._a, b, quality, fps))
 
-    def sync(self):
+    cpdef sync(self):
         return Result(tvg.tvg_saver_sync(self._s))
 
-    def _del(self):
+    cpdef _del(self):
         return Result(tvg.tvg_saver_del(self._s))
 
 
@@ -1097,7 +1097,7 @@ cdef class Accessor:
     def __cinit__(self):
         self._acc = tvg.tvg_accessor_new()
 
-    def _del(self):
+    cpdef _del(self):
         return Result(tvg.tvg_accessor_del(self._acc))
 
     @staticmethod

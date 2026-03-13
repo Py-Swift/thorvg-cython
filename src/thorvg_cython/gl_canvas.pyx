@@ -49,7 +49,7 @@ cdef class GlCanvas(Canvas):
     def __cinit__(self, int engine_option=1):
         self._c = tvg.tvg_glcanvas_create(<tvg.Tvg_Engine_Option>engine_option)
 
-    def target(self, uintptr_t display, uintptr_t surface,
+    cpdef target(self, uintptr_t display, uintptr_t surface,
                uintptr_t context, int32_t fbo_id,
                uint32_t w, uint32_t h, int cs=0):
         """Set the GL render target.

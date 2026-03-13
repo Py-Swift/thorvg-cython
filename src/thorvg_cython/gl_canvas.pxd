@@ -25,8 +25,11 @@ Example (Kivy integration — shared GL context)::
     # Kivy continues issuing GL instructions on the same FBO
     # — no blit_buffer / Texture round-trip needed.
 """
+from libc.stdint cimport uint32_t, int32_t, uintptr_t
 from thorvg_cython.thorvg cimport Canvas
 
 
 cdef class GlCanvas(Canvas):
-    pass
+    cpdef target(self, uintptr_t display, uintptr_t surface,
+                 uintptr_t context, int32_t fbo_id,
+                 uint32_t w, uint32_t h, int cs=*)
