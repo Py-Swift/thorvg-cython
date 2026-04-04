@@ -14,7 +14,7 @@ cdef extern from "thorvg_capi.h":
     ctypedef struct _Tvg_Paint
     ctypedef _Tvg_Paint* Tvg_Paint
 
-    ctypedef void* Tvg_Scene "Tvg_Paint"
+    ctypedef _Tvg_Paint* Tvg_Scene "Tvg_Paint"
 
     ctypedef struct _Tvg_Gradient
     ctypedef _Tvg_Gradient* Tvg_Gradient
