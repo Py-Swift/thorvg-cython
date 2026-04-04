@@ -149,7 +149,7 @@ def _apply_patches(root: Path, gpu: str) -> None:
         # ANGLE on macOS/iOS: thorvg's _glLoad() and EGL loader need
         # .dylib paths for ANGLE's libGLESv2 and libEGL.
         # Local tvgGl.cpp is patched manually — skip auto-patch.
-        #"tvgGl_angle_macos.patch": gpu == "angle",
+        "tvgGl_angle_macos.patch": False,
     }
 
     for pf in sorted(PATCHES_DIR.glob("*.patch")):
