@@ -131,6 +131,44 @@ def _download_thorvg_source(version: str, dest: Path) -> None:
     print(f"[download] thorvg source ready at {dest}")
 
 
+PATCHES_DIR = SCRIPT_DIR / "patches"
+
+
+def _apply_patches(root: Path, gpu: str) -> None:
+    """Apply source patches to the thorvg tree when needed.
+
+    Patches live in ``tools/patches/`` and are applied with ``patch -p1``
+    from the thorvg *root* directory.  A sentinel file is written after
+    each patch so it is not re-applied on subsequent runs.
+    """
+    if not PATCHES_DIR.is_dir():
+        return
+
+    # Map patch filenames to the conditions under which they should apply
+    conditional_patches: dict[str, bool] = {
+        # ANGLE on macOS/iOS: thorvg's _glLoad() and EGL loader need
+        # .dylib paths for ANGLE's libGLESv2 and libEGL.
+        # Local tvgGl.cpp is patched manually — skip auto-patch.
+        #"tvgGl_angle_macos.patch": gpu == "angle",
+    }
+
+    for pf in sorted(PATCHES_DIR.glob("*.patch")):
+        # Skip patches whose conditions are not met
+        condition = conditional_patches.get(pf.name, True)
+        if not condition:
+            continue
+
+        sentinel = root / f".patched_{pf.stem}"
+        if sentinel.exists():
+            print(f"[patch] {pf.name} already applied – skipping")
+            continue
+
+        print(f"[patch] Applying {pf.name} …")
+        _run(["patch", "-p1", "--forward", "-i", str(pf)], cwd=root)
+        sentinel.write_text(f"Applied by build_thorvg.py\n")
+        print(f"[patch] {pf.name} applied successfully")
+
+
 def _validate_gpu(platform: str, gpu: str) -> None:
     """Raise if *gpu* is invalid for *platform*."""
     if not gpu:
@@ -1303,6 +1341,10 @@ def main() -> None:
         _validate_gpu(args.platform, gpu)
     else:
         gpu = ""
+
+    # --- apply source patches (conditional on GPU backend) ---
+    if args.platform != "download-angle":
+        _apply_patches(root, gpu)
 
     # --- dispatch ---
     if args.platform == "linux":

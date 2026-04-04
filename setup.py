@@ -581,7 +581,7 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     exclude_package_data={"": ["*.cpp"], **({"thorvg_cython": ["gl_canvas.py"]} if GPU_MODE else {})},
-    package_data={"thorvg_cython": ["*.dylib", "*.so", "*.dll"]},
+    package_data={"thorvg_cython": ["*.dylib", "*.so", "*.dll", "*.pxd"]},
     ext_modules=extensions,
     python_requires=">=3.9",
     zip_safe=False,

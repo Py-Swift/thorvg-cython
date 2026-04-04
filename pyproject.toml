@@ -24,7 +24,7 @@ dev = ["pytest", "cibuildwheel", "meson", "ninja"]
 # ---------------------------------------------------------------------------
 [tool.cibuildwheel]
 build = "cp311-* cp312-* cp313-* cp314-*"
-skip = "pp* *-musllinux_i686"
+skip = "*-musllinux_i686"
 environment = { THORVG_ROOT = "thorvg", THORVG_VERSION = "1.0.1" }
 test-requires = ["pytest"]
 test-command = "pytest {project}/tests -v"

@@ -14,6 +14,8 @@ cdef extern from "thorvg_capi.h":
     ctypedef struct _Tvg_Paint
     ctypedef _Tvg_Paint* Tvg_Paint
 
+    ctypedef void* Tvg_Scene "Tvg_Paint"
+
     ctypedef struct _Tvg_Gradient
     ctypedef _Tvg_Gradient* Tvg_Gradient
 
@@ -248,16 +250,16 @@ cdef extern from "thorvg_capi.h":
     Tvg_Paint  tvg_picture_get_paint(Tvg_Paint picture, uint32_t id)
 
     # ---------- Scene ----------
-    Tvg_Paint  tvg_scene_new()
-    Tvg_Result tvg_scene_add(Tvg_Paint scene, Tvg_Paint paint)
-    Tvg_Result tvg_scene_insert(Tvg_Paint scene, Tvg_Paint target, Tvg_Paint at)
-    Tvg_Result tvg_scene_remove(Tvg_Paint scene, Tvg_Paint paint)
-    Tvg_Result tvg_scene_clear_effects(Tvg_Paint scene)
-    Tvg_Result tvg_scene_add_effect_gaussian_blur(Tvg_Paint scene, double sigma, int direction, int border, int quality)
-    Tvg_Result tvg_scene_add_effect_drop_shadow(Tvg_Paint scene, int r, int g, int b, int a, double angle, double distance, double sigma, int quality)
-    Tvg_Result tvg_scene_add_effect_fill(Tvg_Paint scene, int r, int g, int b, int a)
-    Tvg_Result tvg_scene_add_effect_tint(Tvg_Paint scene, int black_r, int black_g, int black_b, int white_r, int white_g, int white_b, double intensity)
-    Tvg_Result tvg_scene_add_effect_tritone(Tvg_Paint scene, int shadow_r, int shadow_g, int shadow_b, int midtone_r, int midtone_g, int midtone_b, int highlight_r, int highlight_g, int highlight_b, double blend)
+    Tvg_Scene  tvg_scene_new()
+    Tvg_Result tvg_scene_add(Tvg_Scene scene, Tvg_Paint paint)
+    Tvg_Result tvg_scene_insert(Tvg_Scene scene, Tvg_Paint target, Tvg_Paint at)
+    Tvg_Result tvg_scene_remove(Tvg_Scene scene, Tvg_Paint paint)
+    Tvg_Result tvg_scene_clear_effects(Tvg_Scene scene)
+    Tvg_Result tvg_scene_add_effect_gaussian_blur(Tvg_Scene scene, double sigma, int direction, int border, int quality)
+    Tvg_Result tvg_scene_add_effect_drop_shadow(Tvg_Scene scene, int r, int g, int b, int a, double angle, double distance, double sigma, int quality)
+    Tvg_Result tvg_scene_add_effect_fill(Tvg_Scene scene, int r, int g, int b, int a)
+    Tvg_Result tvg_scene_add_effect_tint(Tvg_Scene scene, int black_r, int black_g, int black_b, int white_r, int white_g, int white_b, double intensity)
+    Tvg_Result tvg_scene_add_effect_tritone(Tvg_Scene scene, int shadow_r, int shadow_g, int shadow_b, int midtone_r, int midtone_g, int midtone_b, int highlight_r, int highlight_g, int highlight_b, double blend)
 
     # ---------- Text ----------
     Tvg_Paint  tvg_text_new()
