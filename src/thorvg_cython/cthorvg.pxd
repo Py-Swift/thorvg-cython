@@ -274,7 +274,7 @@ cdef extern from "thorvg_capi.h":
     Tvg_Result tvg_text_set_outline(Tvg_Paint paint, float width, uint8_t r, uint8_t g, uint8_t b)
     Tvg_Result tvg_text_set_color(Tvg_Paint paint, uint8_t r, uint8_t g, uint8_t b)
     Tvg_Result tvg_text_set_gradient(Tvg_Paint paint, Tvg_Gradient grad)
-    Tvg_Result tvg_text_get_metrics(const Tvg_Paint paint, Tvg_Text_Metrics* metrics)
+    Tvg_Result tvg_text_get_text_metrics(const Tvg_Paint paint, Tvg_Text_Metrics* metrics)
     Tvg_Result tvg_font_load(const char* path)
     Tvg_Result tvg_font_load_data(const char* name, const char* data, uint32_t size, const char* mimetype, bint copy)
     Tvg_Result tvg_font_unload(const char* path)

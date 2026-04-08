@@ -941,7 +941,7 @@ cdef class Text(Paint):
 
     cpdef get_text_metrics(self):
         cdef tvg.Tvg_Text_Metrics m
-        cdef tvg.Tvg_Result r = tvg.tvg_text_get_metrics(self._p, &m)
+        cdef tvg.Tvg_Result r = tvg.tvg_text_get_text_metrics(self._p, &m)
         return Result(r), TextMetrics(m.ascent, m.descent, m.linegap, m.advance)
 
     @staticmethod
