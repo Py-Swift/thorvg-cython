@@ -7,6 +7,13 @@ index e9e1795..a50991b 100644
  static bool _glLoad()
  {
 +#ifdef THORVG_GL_TARGET_GLES
++#if TARGET_OS_IPHONE
++    if (!_libGL) {
++        _libGL = dlopen("@executable_path/Frameworks/libGLESv2.framework/libGLESv2", RTLD_LAZY);
++        if (_libGL) printf("[GL_ENGINE] Loaded libGLESv2 (iOS framework)\n");
++        else printf("[GL_ENGINE] dlopen libGLESv2.framework failed: %s\n", dlerror());
++    }
++#else
 +    if (!_libGL) {
 +        const char* glesPath = getenv("THORVG_LIBGLESV2");
 +        if (glesPath) {
@@ -15,13 +22,6 @@ index e9e1795..a50991b 100644
 +            else printf("[GL_ENGINE] dlopen(%s) failed: %s\n", glesPath, dlerror());
 +        }
 +    }
-+#if TARGET_OS_IPHONE
-+    if (!_libGL) {
-+        _libGL = dlopen("@executable_path/Frameworks/libGLESv2.framework/libGLESv2", RTLD_LAZY);
-+        if (_libGL) printf("[GL_ENGINE] Loaded libGLESv2 (iOS framework)\n");
-+        else printf("[GL_ENGINE] dlopen libGLESv2.framework failed: %s\n", dlerror());
-+    }
-+#else
 +    if (!_libGL) {
 +        _libGL = dlopen("libGLESv2.dylib", RTLD_LAZY);
 +        if (_libGL) printf("[GL_ENGINE] Loaded libGLESv2.dylib (bare name)\n");
@@ -52,6 +52,13 @@ index e9e1795..a50991b 100644
          tvgEglGetCurrentContext = (PFNEGLGETCURRENTCONTEXTPROC)GetProcAddress(_libEGL, "eglGetCurrentContext");
          tvgEglMakeCurrent = (PFNEGLMAKECURRENTPROC)GetProcAddress(_libEGL, "eglMakeCurrent");
 +    #elif defined(__APPLE__) || defined(__MACH__)
++#if TARGET_OS_IPHONE
++        if (!_libEGL) {
++            _libEGL = dlopen("@executable_path/Frameworks/libEGL.framework/libEGL", RTLD_LAZY);
++            if (_libEGL) printf("[GL_ENGINE] Loaded libEGL (iOS framework)\n");
++            else printf("[GL_ENGINE] dlopen libEGL.framework failed: %s\n", dlerror());
++        }
++#else
 +        if (!_libEGL) {
 +            const char* eglPath = getenv("THORVG_LIBEGL");
 +            if (eglPath) {
@@ -60,13 +67,6 @@ index e9e1795..a50991b 100644
 +                else printf("[GL_ENGINE] dlopen(%s) failed: %s\n", eglPath, dlerror());
 +            }
 +        }
-+#if TARGET_OS_IPHONE
-+        if (!_libEGL) {
-+            _libEGL = dlopen("@executable_path/Frameworks/libEGL.framework/libEGL", RTLD_LAZY);
-+            if (_libEGL) printf("[GL_ENGINE] Loaded libEGL (iOS framework)\n");
-+            else printf("[GL_ENGINE] dlopen libEGL.framework failed: %s\n", dlerror());
-+        }
-+#else
 +        if (!_libEGL) {
 +            _libEGL = dlopen("libEGL.dylib", RTLD_LAZY);
 +            if (_libEGL) printf("[GL_ENGINE] Loaded libEGL.dylib (bare name)\n");
