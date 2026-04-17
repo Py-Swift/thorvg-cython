@@ -1,6 +1,8 @@
+diff --git a/src/renderer/gl_engine/tvgGl.cpp b/src/renderer/gl_engine/tvgGl.cpp
+index e9e1795..a50991b 100644
 --- a/src/renderer/gl_engine/tvgGl.cpp
 +++ b/src/renderer/gl_engine/tvgGl.cpp
-@@ -142,11 +142,34 @@
+@@ -142,11 +142,33 @@ static void* _libGL = nullptr;
  
  static bool _glLoad()
  {
@@ -37,7 +39,7 @@
  }
  
  
-@@ -850,6 +873,25 @@
+@@ -850,6 +872,26 @@ bool glInit()
          }
          tvgEglGetCurrentContext = (PFNEGLGETCURRENTCONTEXTPROC)GetProcAddress(_libEGL, "eglGetCurrentContext");
          tvgEglMakeCurrent = (PFNEGLMAKECURRENTPROC)GetProcAddress(_libEGL, "eglMakeCurrent");
