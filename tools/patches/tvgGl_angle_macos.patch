@@ -1,22 +1,25 @@
 --- a/src/renderer/gl_engine/tvgGl.cpp
 +++ b/src/renderer/gl_engine/tvgGl.cpp
-@@ -142,11 +142,28 @@
+@@ -142,11 +142,34 @@
  
  static bool _glLoad()
  {
 +#ifdef THORVG_GL_TARGET_GLES
++    if (!_libGL) {
++        const char* glesPath = getenv("THORVG_LIBGLESV2");
++        if (glesPath) {
++            _libGL = dlopen(glesPath, RTLD_LAZY);
++            if (_libGL) printf("[GL_ENGINE] Loaded THORVG_LIBGLESV2=%s\n", glesPath);
++            else printf("[GL_ENGINE] dlopen(%s) failed: %s\n", glesPath, dlerror());
++        }
++    }
 +    if (!_libGL) {
 +        _libGL = dlopen("libGLESv2.dylib", RTLD_LAZY);
 +        if (_libGL) printf("[GL_ENGINE] Loaded libGLESv2.dylib (bare name)\n");
 +        else printf("[GL_ENGINE] dlopen(libGLESv2.dylib) failed: %s\n", dlerror());
 +    }
 +    if (!_libGL) {
-+        _libGL = dlopen("@rpath/libGLESv2.dylib", RTLD_LAZY);
-+        if (_libGL) printf("[GL_ENGINE] Loaded @rpath/libGLESv2.dylib\n");
-+        else printf("[GL_ENGINE] dlopen(@rpath/libGLESv2.dylib) failed: %s\n", dlerror());
-+    }
-+    if (!_libGL) {
-+        TVGERR("GL_ENGINE", "Cannot find the gles library.");
++        TVGERR("GL_ENGINE", "Cannot find GLES library (set THORVG_LIBGLESV2 env var).");
 +        return false;
 +    }
 +#else
@@ -34,23 +37,26 @@
  }
  
  
-@@ -850,6 +867,21 @@
+@@ -850,6 +873,25 @@
          }
          tvgEglGetCurrentContext = (PFNEGLGETCURRENTCONTEXTPROC)GetProcAddress(_libEGL, "eglGetCurrentContext");
          tvgEglMakeCurrent = (PFNEGLMAKECURRENTPROC)GetProcAddress(_libEGL, "eglMakeCurrent");
 +    #elif defined(__APPLE__) || defined(__MACH__)
++        if (!_libEGL) {
++            const char* eglPath = getenv("THORVG_LIBEGL");
++            if (eglPath) {
++                _libEGL = dlopen(eglPath, RTLD_LAZY);
++                if (_libEGL) printf("[GL_ENGINE] Loaded THORVG_LIBEGL=%s\n", eglPath);
++                else printf("[GL_ENGINE] dlopen(%s) failed: %s\n", eglPath, dlerror());
++            }
++        }
 +        if (!_libEGL) {
 +            _libEGL = dlopen("libEGL.dylib", RTLD_LAZY);
 +            if (_libEGL) printf("[GL_ENGINE] Loaded libEGL.dylib (bare name)\n");
 +            else printf("[GL_ENGINE] dlopen(libEGL.dylib) failed: %s\n", dlerror());
 +        }
 +        if (!_libEGL) {
-+            _libEGL = dlopen("@rpath/libEGL.dylib", RTLD_LAZY);
-+            if (_libEGL) printf("[GL_ENGINE] Loaded @rpath/libEGL.dylib\n");
-+            else printf("[GL_ENGINE] dlopen(@rpath/libEGL.dylib) failed: %s\n", dlerror());
-+        }
-+        if (!_libEGL) {
-+            TVGERR("GL_ENGINE", "Cannot find EGL library.");
++            TVGERR("GL_ENGINE", "Cannot find EGL library (set THORVG_LIBEGL env var).");
 +            return false;
 +        }
 +        tvgEglGetCurrentContext = (PFNEGLGETCURRENTCONTEXTPROC)dlsym(_libEGL, "eglGetCurrentContext");

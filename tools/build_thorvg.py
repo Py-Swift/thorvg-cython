@@ -146,10 +146,9 @@ def _apply_patches(root: Path, gpu: str) -> None:
 
     # Map patch filenames to the conditions under which they should apply
     conditional_patches: dict[str, bool] = {
-        # ANGLE on macOS/iOS: thorvg's _glLoad() and EGL loader need
-        # .dylib paths for ANGLE's libGLESv2 and libEGL.
-        # Local tvgGl.cpp is patched manually — skip auto-patch.
-        "tvgGl_angle_macos.patch": False,
+        # ANGLE on macOS/iOS: patch _glLoad() to find ANGLE libGLESv2/libEGL
+        # via THORVG_LIBGLESV2 / THORVG_LIBEGL env vars, with bare-name fallback.
+        "tvgGl_angle_macos.patch": gpu == "angle",
     }
 
     for pf in sorted(PATCHES_DIR.glob("*.patch")):
