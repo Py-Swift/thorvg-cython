@@ -839,6 +839,9 @@ cdef class Picture(Paint):
         p._set(pp, False)
         return p
 
+    cpdef set_accessible(self, bint accessible):
+        return Result(tvg.tvg_picture_set_accessible(self._p, accessible))
+
 
 # ═══════════════════════════════════════════════════════════════════
 #  Scene
@@ -1099,6 +1102,12 @@ cdef class Accessor:
 
     cpdef _del(self):
         return Result(tvg.tvg_accessor_del(self._acc))
+
+    cpdef get_name(self, uint32_t id):
+        cdef const char* name = tvg.tvg_accessor_get_name(self._acc, id)
+        if name == NULL:
+            return None
+        return name.decode("utf-8")
 
     @staticmethod
     def generate_id(str name):

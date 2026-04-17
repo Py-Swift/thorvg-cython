@@ -160,6 +160,7 @@ cdef class Picture(Paint):
     cpdef set_origin(self, float x, float y)
     cpdef get_origin(self)
     cpdef get_paint(self, uint32_t id)
+    cpdef set_accessible(self, bint accessible)
 
 
 # ── Scene ────────────────────────────────────────────────────────
@@ -241,5 +242,6 @@ cdef class Accessor:
     cdef tvg.Tvg_Accessor _acc
 
     cpdef _del(self)
+    cpdef get_name(self, uint32_t id)
 
 

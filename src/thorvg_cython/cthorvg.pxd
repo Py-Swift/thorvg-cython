@@ -248,6 +248,7 @@ cdef extern from "thorvg_capi.h":
     Tvg_Result tvg_picture_set_origin(Tvg_Paint picture, float x, float y)
     Tvg_Result tvg_picture_get_origin(const Tvg_Paint picture, float* x, float* y)
     Tvg_Paint  tvg_picture_get_paint(Tvg_Paint picture, uint32_t id)
+    Tvg_Result tvg_picture_set_accessible(Tvg_Paint picture, bint accessible)
 
     # ---------- Scene ----------
     Tvg_Scene  tvg_scene_new()
@@ -330,3 +331,4 @@ cdef extern from "thorvg_capi.h":
     Tvg_Accessor tvg_accessor_new()
     Tvg_Result tvg_accessor_del(Tvg_Accessor accessor)
     uint32_t   tvg_accessor_generate_id(const char* name)
+    const char* tvg_accessor_get_name(Tvg_Accessor accessor, uint32_t id)

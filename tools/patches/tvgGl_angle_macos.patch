@@ -1,7 +1,7 @@
-diff --git a/src/renderer/gl_engine/tvgGl.cpp b/src/renderer/gl_engine/tvgGl.cpp
+diff --git a/src/renderer/gpu_engine/gl/tvgGl.cpp b/src/renderer/gpu_engine/gl/tvgGl.cpp
 index e9e1795..a50991b 100644
---- a/src/renderer/gl_engine/tvgGl.cpp
-+++ b/src/renderer/gl_engine/tvgGl.cpp
+--- a/src/renderer/gpu_engine/gl/tvgGl.cpp
++++ b/src/renderer/gpu_engine/gl/tvgGl.cpp
 @@ -142,11 +142,41 @@ static void* _libGL = nullptr;
  
  static bool _glLoad()
